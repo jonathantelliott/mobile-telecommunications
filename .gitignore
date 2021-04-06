@@ -1,0 +1,16 @@
+# Ignore Mac system files
+.DS_Store
+
+# Ignore all Jupyter notebooks
+*.ipynb
+
+# Ignore folders
+quality/notebooks/
+demand/estimation/slurm/
+summary_stats/notebooks/
+
+# Ignore .pyc files
+*.pyc
+
+# Ignore settings.json
+.vscode/settings.json
