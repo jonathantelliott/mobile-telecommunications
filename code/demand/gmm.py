@@ -5,13 +5,16 @@ import demand.moments as moments
 import demand.blpextension as blp
 import demand.coefficients as coef
 
-def g(ds, theta, X, avg_price_el, sigma, nonOxis=None):
+def g(ds, theta, X, avg_price_el, sigma, nonOxis=None, all_markets=True):
     theta = np.concatenate((theta, np.array([sigma]))) # add on the imputed sigma
     xis = blp.xi(ds, theta, X, nonOxis)
     # evaluate the set of moments and combine the moments into a MxK matrix (M observations, K moments)
-    moms = np.zeros((X.shape[0],0))
+    M = ds.num_markets_moms
+    if not all_markets:
+        M = X.shape[0]
+    moms = np.zeros((M,0))
     for moment in moments.moments:
-        mom = moment(ds, X, xis, theta, avg_price_el)
+        mom = moment(ds, X, xis, theta, avg_price_el, all_markets=all_markets)
         moms = np.concatenate((moms, mom), axis=1)
     return moms
 

@@ -110,9 +110,9 @@ def data_demand_rate(ds, xis, theta, Q, num_stations, pop):
         predicted_dbar_f[:,i] = np.sum(predicted_dbar_j[:,ds.firms == firm], axis=1)
     
     # Turn data demanded over month to demand rate
-    num_hours_in_day = 24. #6. # people only use phone during the day
-    num_seconds_month = 60. * 60. * num_hours_in_day * 30.
-    byte_to_bit_conv = 8.
+    num_hours_in_day = 8.0 # people only use phone during the day
+    num_seconds_month = 60.0 * 60.0 * num_hours_in_day * 31.0
+    byte_to_bit_conv = 8.0
     Q_D = byte_to_bit_conv * predicted_dbar_f / num_stations / num_seconds_month # Mb per station per second
 
     return Q_D

@@ -70,7 +70,7 @@ def s_jacobian_p(p, cc, ds, xis, theta, num_stations, pop, symmetric=False, impu
         ds_high = copy.deepcopy(ds) # this method might be slow b/c requires copying all other attributes too--might be better to rewrite some demand functions instead
         ds_low = copy.deepcopy(ds)
         if symmetric:
-            ds_high.data[:,:,pidx] = np.concatenate((p_high[:,j], np.tile(p, (num_firms - 1,))))[np.newaxis,:], 
+            ds_high.data[:,:,pidx] = np.concatenate((p_high[:,j], np.tile(p, (num_firms - 1,))))[np.newaxis,:]
             ds_low.data[:,:,pidx] = np.concatenate((p_low[:,j], np.tile(p, (num_firms - 1,))))[np.newaxis,:]
         else:
             ds_high.data[:,:,pidx] = p_high[:,j][np.newaxis,:]

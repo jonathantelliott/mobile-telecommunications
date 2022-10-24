@@ -19,10 +19,10 @@ def stage(ds, thetainit, W, avg_price_el, sigma):
 
     def evaluateFC(x):
         start = time.time()
-        print("Theta: " + str(x))
+        print("Theta: " + str(x), flush=True)
         obj = evaluateObjFct(x)
-        print("Objective function: " + str(obj))
-        print("Time: " + str(time.time() - start))
+        print("Objective function: " + str(obj), flush=True)
+        print("Time: " + str(time.time() - start), flush=True)
         return obj
 
     #----------------------------------------------------------------
@@ -40,13 +40,13 @@ def stage(ds, thetainit, W, avg_price_el, sigma):
                 add_to = np.zeros(x.shape[0])
                 add_to[i] = eps
                 grad_objfct[i] = (evaluateObjFct(x + add_to) - obj) / eps
-            print("Evaluating gradient numerically...")
-        print("Gradient: " + str(grad_objfct))
+            print("Evaluating gradient numerically...", flush=True)
+        print("Gradient: " + str(grad_objfct), flush=True)
         return grad_objfct
 
-    res = minimize(evaluateFC, thetainit, jac=evaluateGA)
+    res = minimize(evaluateFC, thetainit, jac=evaluateGA, tol=1.0e-5)
     
-    print(str(res))
+    print(str(res), flush=True)
     
     return res.x
 
@@ -54,10 +54,10 @@ def stage(ds, thetainit, W, avg_price_el, sigma):
 
 def est(ds, thetainit, W, K, avg_price_el, sigma):
     theta_1stage = stage(ds, thetainit, W, avg_price_el, sigma)
-    print('First stage: ')
-    print(str(theta_1stage))
+    print('First stage: ', flush=True)
+    print(str(theta_1stage), flush=True)
     What = wm.W(ds, theta_1stage, K, avg_price_el, sigma)
     theta_2stage = stage(ds, theta_1stage, What, avg_price_el, sigma)
-    print('Second stage: ')
-    print(str(theta_2stage))
+    print('Second stage: ', flush=True)
+    print(str(theta_2stage), flush=True)
     return theta_2stage, What

@@ -8,8 +8,8 @@ from scipy import integrate
 freq_rep = 1900. # representative frequency
 height_rep = 30. # representative height of base station
 A0 = 61. # baseline signal strength in dBm / 5 MHz
-JN_noise = -174. + 10. * np.log10(5.e6) # Johnson-Nyquist noise per 5 MHz
-cell_utilization = 0.02
+JN_noise = -174. + 10. * np.log10(5.0e6) # Johnson-Nyquist noise per 5 MHz
+cell_utilization = 0.3 # from Blaszczyszyn et al., 2014
 
 # %%
 def hata_loss(radius, freq, height):
@@ -18,7 +18,7 @@ def hata_loss(radius, freq, height):
     
     Parameters
     ----------
-        radius : float
+        radius : float or ndarray
             cell radius in km
         freq : float 
             frequency in MHz
@@ -35,39 +35,20 @@ def hata_loss(radius, freq, height):
 
     return path_loss
 
-def loss_power_ratio(radius, freq, height):
+def interfere_power(A, x, y, radius, freq, height):
     """
-        Return loss in terms of power ratio
-    
-    Parameters
-    ----------
-        radius : float
-            cell radius in km
-        freq : float 
-            frequency in MHz
-        height : float
-            antenna height in m
-
-    Returns
-    -------
-        loss_pr : float 
-            path loss power ratio
-    """
-
-    loss_pr = np.exp(hata_loss(radius, freq, height) * np.log(10.) / 10.)
-
-    return loss_pr
-
-def interfere_power(A, radius, freq, height):
-    """
-        Return interference from adjacent six cells
+        Return interference from adjacent cells
     
     Parameters
     ----------
         A : float
             power in dBm / 5 MHz
+        x : float
+            coordinate x in km
+        y : float
+            coordinate y in km
         radius : float
-            cell radius in km
+            size of radius in km
         freq : float 
             frequency in MHz
         height : float
@@ -75,16 +56,25 @@ def interfere_power(A, radius, freq, height):
 
     Returns
     -------
-        interference : float
-            interference from adjacent six cells, in dBm
+        interference : ndarray
+            interference from six adjacent cells, in dBm
     """
-
-    loss = hata_loss(radius * np.sqrt(3), freq, height)
-    interference = A - loss + 10. * np.log10(6. * cell_utilization)
+    
+    # Construct x and y coordinates from the perspective of the six adjacent cells
+    dist_x = np.array([0., 3. / 2., 3. / 2., 0., 3. / 2., 3. / 2.]) * radius
+    dist_y = np.array([np.sqrt(3.), np.sqrt(3.) / 2., np.sqrt(3.) / 2., np.sqrt(3.), np.sqrt(3.) / 2., np.sqrt(3.) / 2.]) * radius
+    direction_x = np.array([1., -1., -1., 1., 1., 1.])
+    direction_y = np.array([-1., -1., 1., 1., 1., -1.])
+    x_coords = dist_x + direction_x * x
+    y_coords = dist_y + direction_y * y
+    
+    # Determine interference power from the six adjacent cells
+    radii = np.sqrt(x_coords**2. + y_coords**2.)
+    interference = A - hata_loss(radii, freq, height)
 
     return interference
 
-def SINR(A, radius, freq, height):
+def SINR(A, x, y, radius, freq, height):
     """
         Return signal-to-interference-and-noise ratio
     
@@ -92,6 +82,10 @@ def SINR(A, radius, freq, height):
     ----------
         A : float
             power in dBm / 5 MHz
+        x : float
+            coordinate x in km
+        y : float
+            coordinate y in km
         radius : float
             cell radius in km
         freq : float 
@@ -105,11 +99,9 @@ def SINR(A, radius, freq, height):
             signal-to-interference-and-noise ratio, power ratio
     """
 
-    loss = hata_loss(radius, freq, height)
-    interference = interfere_power(A, radius, freq, height)
-    signal_power = 10.**((A - loss) / 10.)
+    signal_power = 10.**((A - hata_loss(np.sqrt(x**2. + y**2.), freq, height)) / 10.)
     noise_power = 10.**(JN_noise / 10.)
-    interference_power = 10.**(interference / 10.)
+    interference_power = np.sum(cell_utilization * 10.**(interfere_power(A, x, y, radius, freq, height) / 10.)) # cell only utilized cell_utilization fraction of the time
     ratio = signal_power / (noise_power + interference_power)
 
     return ratio
@@ -136,13 +128,57 @@ def rho_C_hex(bw, radius, gamma):
     if bw <= 0:
         channel_cap = 0
     else:
-        cell_area = 3. * np.sqrt(3.) / 2. * (radius**2. - 0.001**2.)
+        cell_area = 3. * np.sqrt(3.) / 2. * radius**2.
         num_triangles = 6. * 2.
-        transmission = lambda s, r: num_triangles / np.log2(1. + SINR(A0, np.sqrt(s**2. + r**2.), freq_rep, height_rep))
-        mean_transmission = integrate.dblquad(transmission, 0.001 * np.sqrt(3./4.), radius * np.sqrt(3./4.), lambda r: 0, lambda r: r / np.sqrt(3.))[0] # take only the first argument (result), not second (error estimate)
+        transmission = lambda x, y: num_triangles / np.log2(1. + SINR(A0, x, y, radius, freq_rep, height_rep))
+        mean_transmission = integrate.dblquad(transmission, 0., radius * np.sqrt(3./4.), lambda y: 0., lambda y: y / np.sqrt(3.))[0] # take only the first argument (result), not second (error estimate)
         channel_cap = gamma * cell_area * bw / mean_transmission
 
     return channel_cap
+
+def avg_path_loss(radius):
+    """
+        Return average path loss over the cell
+    
+    Parameters
+    ----------
+        radius : float
+            cell radius in km
+
+    Returns
+    -------
+        mean_path_loss : float
+            average path loss experienced by consumers in cell
+    """
+
+    cell_area = 3. * np.sqrt(3.) / 2. * radius**2.
+    num_triangles = 6. * 2.
+    path_loss = lambda y, x: num_triangles * hata_loss(np.sqrt(x**2. + y**2.), freq_rep, height_rep)
+    mean_path_loss = 1.0 / cell_area * integrate.dblquad(path_loss, 0., radius * np.sqrt(3./4.), lambda y: 0., lambda y: y / np.sqrt(3.))[0] # take only the first argument (result), not second (error estimate)
+
+    return mean_path_loss
+
+def avg_SINR(radius):
+    """
+        Return average SINR over the cell
+    
+    Parameters
+    ----------
+        radius : float
+            cell radius in km
+
+    Returns
+    -------
+        mean_SINR : float
+            average SINR experienced by consumers in cell
+    """
+
+    cell_area = 3. * np.sqrt(3.) / 2. * radius**2.
+    num_triangles = 6. * 2.
+    SINR_ = lambda y, x: num_triangles * SINR(A0, x, y, radius, freq_rep, height_rep)
+    mean_SINR = 1.0 / cell_area * integrate.dblquad(SINR_, 0., radius * np.sqrt(3./4.), lambda y: 0., lambda y: y / np.sqrt(3.))[0] # take only the first argument (result), not second (error estimate)
+
+    return mean_SINR
 
 def num_stations(R, market_size):
     """

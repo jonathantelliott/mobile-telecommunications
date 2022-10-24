@@ -2,7 +2,7 @@ import autograd.numpy as np
 #import numpy as np
 
 class DemandSystem:
-    def __init__(self, df, sortval, charlist, elist, demolist, aggshare, s0, prodlist, firmlist, outside_option_share, monthname='month', marketname='market', productname='j', pricename='p', qname='q', dlimname='dlim', dbarname='dbar', marketsharename='mktshare', msizename='msize', vunlimitedname='vunlimited', commit12name='commit12', commit24name='commit24', Oname='Orange', lowdataname='lowdata', highdataname='highdata', popdensname='pop_dens', propabovename='prop_above', prop0name='prop_zero'):
+    def __init__(self, df, sortval, charlist, elist, demolist, aggshare, s0, prodlist, firmlist, outside_option_share, monthname='month', marketname='market', productname='j', pricename='p', qname='q', dlimname='dlim', dbarname='dbar', marketsharename='mktshare', msizename='msize', vunlimitedname='vunlimited', commit12name='commit12', commit24name='commit24', Oname='Orange', lowdataname='lowdata', highdataname='highdata', popdensname='pop_dens', propabovename='prop_above', prop0name='prop_zero', include_ROF=True):
         # Initial stuff
         if len(charlist['names']) == len(charlist['norm']):
             char = charlist['names']
@@ -44,19 +44,20 @@ class DemandSystem:
         Oproducts = firmlist == 1
         J_O = np.sum(Oproducts)
         
-        # Dealing with zeros in market shares for Orange products - not actually a concern b/c there aren't any
-        ctr = 0
-        mktshareloc = dim3.index(marketsharename)
-        addepsilon = 0.00001
-        for m in range(M):
-            for j in range(J):
-                if npdata[m, j, mktshareloc] == 0 and Oproducts[j]:
-                    npdata[m, j, mktshareloc] = addepsilon
-                    ctr += 1
-        if ctr > 0:
-            print('Warning: ' + str(round(ctr / (M * J_O) * 100, 2)) + '% of product-market shares were 0. Shares changed to ' + str(addepsilon) + '.')
+#         # Dealing with zeros in market shares for Orange products - not actually a concern b/c there aren't any
+#         ctr = 0
+#         mktshareloc = dim3.index(marketsharename)
+#         addepsilon = 0.00001
+#         for m in range(M):
+#             for j in range(J):
+#                 if npdata[m, j, mktshareloc] == 0 and Oproducts[j]:
+#                     npdata[m, j, mktshareloc] = addepsilon
+#                     ctr += 1
+#         if ctr > 0:
+#             print('Warning: ' + str(round(ctr / (M * J_O) * 100, 2)) + '% of product-market shares were 0. Shares changed to ' + str(addepsilon) + '.')
         
         # Get rid of outside option in Orange shares
+        mktshareloc = dim3.index(marketsharename)
         npdata[:,:,mktshareloc] = npdata[:,:,mktshareloc] / (1. - s0) * (1. - outside_option_share) # get rid of s0 measure and replace with our imposed outside option
         
         # Normalize variables
@@ -85,6 +86,11 @@ class DemandSystem:
         relevantmarkets = np.identity(M) # this (MUCH faster) version relies on Orange-then-others structure
         relevantmarkets = np.repeat(relevantmarkets, J_O, axis=1)
         relevantmarkets = np.hstack((relevantmarkets, np.ones((M, F - J_O * M))))
+        
+        # Markets to use in moments
+        markets_moms = np.ones((M,), dtype=bool)
+        if not include_ROF:
+            markets_moms[npdata[:,0,dim3.index(marketname)] == 0] = False
         
         # save to DemandSystem object
         self.data = npdata
@@ -120,6 +126,8 @@ class DemandSystem:
         self.J_O_markets = J_O_markets
         self.relevantmarkets = relevantmarkets
         self.initdeltas = np.zeros(F - 1)
+        self.markets_moms = markets_moms
+        self.num_markets_moms = np.sum(markets_moms)
         
     def relevant_markets(self, X):
         if X.shape[0] == self.M:

@@ -1,21 +1,29 @@
 #!/bin/sh
 #
 #SBATCH --verbose
+#SBATCH --array=0-11
 #SBATCH --job-name=demand_est
 #SBATCH --output=slurm_%j.out
 #SBATCH --error=slurm_%j.err
-#SBATCH --time=3-00:00:00
+#SBATCH --time=5-00:00:00
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=120GB
+#SBATCH --mem=100GB
 #SBATCH --mail-type=END
 #SBATCH --mail-user=jte254@nyu.edu
+
+#SCRATCHLOC=$(sed -n -e '/^scratch_path/p' paths.py)
+#SCRATCHLOC=${SCRATCHLOC#*\"}
+#SCRATCHLOC=${SCRATCHLOC%%\"}
+#HOMELOC=$(sed -n -e '/^home_path/p' paths.py)
+#HOMELOC=${HOMELOC#*\"}
+#HOMELOC=${HOMELOC%%\"}
+#ENVLOC="/scratch/jte254/telecom-env/telecom-cuda11.0.ext3"
  
 singularity exec $nv \
-	    --overlay /scratch/jte254/telecom-env/telecom-cuda11.0.ext3:ro \
+	    --overlay ${ENVLOC}:ro \
 	    /scratch/work/public/singularity/cuda11.0-cudnn8-devel-ubuntu18.04.sif \
 	    /bin/bash -c "
 source /ext3/env.sh
-cd /home/jte254/telecom/
-python code/demand.py $SLURM_ARRAY_TASK_ID > /scratch/jte254/telecom/slurm/log_demand_$SLURM_ARRAY_TASK_ID.txt
+python ${HOMELOC}code/demand.py $SLURM_ARRAY_TASK_ID > ${SCRATCHLOC}slurm/log_demand_$SLURM_ARRAY_TASK_ID.txt
 "
