@@ -22,6 +22,7 @@ import demand.demandsystem as demsys
 
 import counterfactuals.infrastructurefunctions as infr
 import counterfactuals.infrastructureequilibrium as ie
+import demand.coefficients as coef
 
 import pickle
 
@@ -77,6 +78,8 @@ avg_SINR = lambda x,y: np.load(f"{paths.arrays_path}avg_SINR_e{x}_n{y}.npy")
 partial_elasts = lambda x,y: np.load(f"{paths.arrays_path}partial_elasts_e{x}_n{y}.npy")
 full_elasts = lambda x,y: np.load(f"{paths.arrays_path}full_elasts_e{x}_n{y}.npy")
 partial_Pif_partial_bf_allfixed = lambda x,y: np.load(f"{paths.arrays_path}partial_Pif_partial_bf_allfixed_e{x}_n{y}.npy")
+partial_Piotherf_partial_bf_allfixed = lambda x,y: np.load(f"{paths.arrays_path}partial_Piotherf_partial_bf_allfixed_e{x}_n{y}.npy")
+partial_diffPif_partial_bf_allfixed = lambda x,y: np.load(f"{paths.arrays_path}partial_diffPif_partial_bf_allfixed_e{x}_n{y}.npy")
 partial_Pif_partial_b_allfixed = lambda x,y: np.load(f"{paths.arrays_path}partial_Pif_partial_b_allfixed_e{x}_n{y}.npy")
 partial_CS_partial_b_allfixed = lambda x,y: np.load(f"{paths.arrays_path}partial_CS_partial_b_allfixed_e{x}_n{y}.npy")
 p_stars_shortrun = lambda x,y: np.load(f"{paths.arrays_path}p_stars_shortrun_e{x}_n{y}.npy")
@@ -104,6 +107,8 @@ ccs_free_allfixed = lambda x,y: np.load(f"{paths.arrays_path}ccs_free_allfixed_e
 ccs_per_bw_free_allfixed = lambda x,y: np.load(f"{paths.arrays_path}ccs_per_bw_free_allfixed_e{x}_n{y}.npy")
 avg_path_losses_free_allfixed = lambda x,y: np.load(f"{paths.arrays_path}avg_path_losses_free_allfixed_e{x}_n{y}.npy")
 partial_Pif_partial_bf_allbw = lambda x,y: np.load(f"{paths.arrays_path}partial_Pif_partial_bf_allbw_e{x}_n{y}.npy")
+partial_Piotherf_partial_bf_allbw = lambda x,y: np.load(f"{paths.arrays_path}partial_Piotherf_partial_bf_allbw_e{x}_n{y}.npy")
+partial_diffPif_partial_bf_allbw = lambda x,y: np.load(f"{paths.arrays_path}partial_diffPif_partial_bf_allbw_e{x}_n{y}.npy")
 partial_Pif_partial_b_allbw = lambda x,y: np.load(f"{paths.arrays_path}partial_Pif_partial_b_allbw_e{x}_n{y}.npy")
 partial_CS_partial_b_allbw = lambda x,y: np.load(f"{paths.arrays_path}partial_CS_partial_b_allbw_e{x}_n{y}.npy")
 p_stars_free_allbw = lambda x,y: np.load(f"{paths.arrays_path}p_stars_free_allbw_e{x}_n{y}.npy")
@@ -177,6 +182,8 @@ avg_path_losses_se = lambda x,y: np.load(f"{paths.arrays_path}avg_path_losses_se
 partial_elasts_se = lambda x,y: np.load(f"{paths.arrays_path}partial_elasts_se_e{x}_n{y}.npy")
 full_elasts_se = lambda x,y: np.load(f"{paths.arrays_path}full_elasts_se_e{x}_n{y}.npy")
 partial_Pif_partial_bf_allfixed_se = lambda x,y: np.load(f"{paths.arrays_path}partial_Pif_partial_bf_allfixed_se_e{x}_n{y}.npy")
+partial_Piotherf_partial_bf_allfixed_se = lambda x,y: np.load(f"{paths.arrays_path}partial_Piotherf_partial_bf_allfixed_se_e{x}_n{y}.npy")
+partial_diffPif_partial_bf_allfixed_se = lambda x,y: np.load(f"{paths.arrays_path}partial_diffPif_partial_bf_allfixed_se_e{x}_n{y}.npy")
 partial_Pif_partial_b_allfixed_se = lambda x,y: np.load(f"{paths.arrays_path}partial_Pif_partial_b_allfixed_se_e{x}_n{y}.npy")
 partial_CS_partial_b_allfixed_se = lambda x,y: np.load(f"{paths.arrays_path}partial_CS_partial_b_allfixed_se_e{x}_n{y}.npy")
 p_stars_shortrun_se = lambda x,y: np.load(f"{paths.arrays_path}p_stars_shortrun_se_e{x}_n{y}.npy")
@@ -204,6 +211,8 @@ ccs_free_allfixed_se = lambda x,y: np.load(f"{paths.arrays_path}ccs_free_allfixe
 ccs_per_bw_free_allfixed_se = lambda x,y: np.load(f"{paths.arrays_path}ccs_per_bw_free_allfixed_se_e{x}_n{y}.npy")
 avg_path_losses_free_allfixed_se = lambda x,y: np.load(f"{paths.arrays_path}avg_path_losses_free_allfixed_se_e{x}_n{y}.npy")
 partial_Pif_partial_bf_allbw_se = lambda x,y: np.load(f"{paths.arrays_path}partial_Pif_partial_bf_allbw_se_e{x}_n{y}.npy")
+partial_Piotherf_partial_bf_allbw_se = lambda x,y: np.load(f"{paths.arrays_path}partial_Piotherf_partial_bf_allbw_se_e{x}_n{y}.npy")
+partial_diffPif_partial_bf_allbw_se = lambda x,y: np.load(f"{paths.arrays_path}partial_diffPif_partial_bf_allbw_se_e{x}_n{y}.npy")
 partial_Pif_partial_b_allbw_se = lambda x,y: np.load(f"{paths.arrays_path}partial_Pif_partial_b_allbw_se_e{x}_n{y}.npy")
 partial_CS_partial_b_allbw_se = lambda x,y: np.load(f"{paths.arrays_path}partial_CS_partial_b_allbw_se_e{x}_n{y}.npy")
 p_stars_free_allbw_se = lambda x,y: np.load(f"{paths.arrays_path}p_stars_free_allbw_se_e{x}_n{y}.npy")
@@ -301,6 +310,15 @@ def create_file(file_name, file_contents):
     f.close()
 
 
+# %%
+# Spectral efficiencies
+spectral_efficiencies_params = np.load(f"{paths.arrays_path}spectral_efficiencies.npy")
+populations = np.load(f"{paths.arrays_path}populations.npy")
+
+if save_:
+    create_file(f"{paths.stats_path}mean_spectral_efficiency.tex", f"{np.mean(spectral_efficiencies_params):.3f}")
+    create_file(f"{paths.stats_path}std_spectral_efficiency.tex", f"{np.std(spectral_efficiencies_params):.3f}")
+    create_file(f"{paths.stats_path}weighted_avg_spectral_efficiency.tex", f"{np.average(spectral_efficiencies_params, weights=populations):.3f}")
 
 
 # %%
@@ -387,10 +405,10 @@ fig, axs = plt.subplots(2, 2, figsize=(13,8), sharex=True)
 for i, mno in enumerate(mnos[:-1]):
     row = i // 2
     col = i % 2
-    axs[row,col].hist(c_R(default_elast_id,default_nest_id)[:,i], color=plt.rcParams['axes.prop_cycle'].by_key()['color'][i], alpha=0.7)
+    axs[row,col].hist(c_R(default_elast_id,default_nest_id)[:,i] * 75.0, color=plt.rcParams['axes.prop_cycle'].by_key()['color'][i], alpha=0.7)
     axs[row,col].set_xlabel("$\hat{c}_{fm}$ (in \u20ac)" if row == 1 else "", fontsize=12)
     axs[row,col].set_title(mno, color=plt.rcParams['axes.prop_cycle'].by_key()['color'][i], fontsize=20, y=0.85)
-    axs[row,col].axvline(x=np.mean(c_R(default_elast_id,default_nest_id)[:,i]), color=plt.rcParams['axes.prop_cycle'].by_key()['color'][i], linestyle="--", linewidth=2.)
+    axs[row,col].axvline(x=np.mean(c_R(default_elast_id,default_nest_id)[:,i]) * 75.0, color=plt.rcParams['axes.prop_cycle'].by_key()['color'][i], linestyle="--", linewidth=2.)
     axs[row,col].spines['top'].set_visible(False)
     axs[row,col].spines['right'].set_visible(False)
     axs[row,col].spines['left'].set_visible(False)
@@ -405,10 +423,10 @@ if print_:
     plt.show()
 
 def process_c_R(c_R):
-    return 200. * np.mean(c_R, axis=0) # 200 to convert from monthly to perpetuity
+    return 200. * np.mean(c_R * 75.0, axis=0) # 200 to convert from monthly to perpetuity
 
 def process_c_R_sd(c_R):
-    return np.std(200. * c_R, axis=0) # 200 to convert from monthly to perpetuity
+    return np.std(200. * c_R * 75.0, axis=0) # 200 to convert from monthly to perpetuity
 
 to_tex = "\\begin{tabular}{c c c c c c} \n"
 to_tex += " & \\textbf{Nesting} & \\textbf{Orange} & \\textbf{SFR} & \\textbf{Free} & \\textbf{Bouygues} \\\\ \n"
@@ -449,7 +467,7 @@ if save_:
 # Values used in counterfactuals
 
 print("Values used in counterfactuals")
-print(f"c_R: {np.mean(c_R(default_elast_id,default_nest_id)[:,np.array([True,True,False,True])]) * 200.0}")
+print(f"c_R (per unit of bw): {np.mean(c_R(default_elast_id,default_nest_id)[:,np.array([True,True,False,True])]) * 200.0}")
 print(f"1 GB c_u: {np.mean(c_u(default_elast_id,default_nest_id)[ds.data[0,:,dlimidx] < 5000.0])}")
 print(f"10 GB c_u: {np.mean(c_u(default_elast_id,default_nest_id)[ds.data[0,:,dlimidx] >= 5000.0])}")
 
@@ -618,12 +636,12 @@ title_fontsize = "xx-large"
 title_pad = 15.0
 
 # partial_Pif_partial_bf
-axs[0,0].plot(num_firms_array, partial_Pif_partial_bf_allfixed(default_elast_id,default_nest_id), color="black", lw=lw, alpha=alpha)
-axs[0,0].plot(num_firms_array, partial_Pif_partial_bf_allfixed(default_elast_id,default_nest_id) + 1.96 * partial_Pif_partial_bf_allfixed_se(default_elast_id,default_nest_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-axs[0,0].plot(num_firms_array, partial_Pif_partial_bf_allfixed(default_elast_id,default_nest_id) - 1.96 * partial_Pif_partial_bf_allfixed_se(default_elast_id,default_nest_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+axs[0,0].plot(num_firms_array, partial_diffPif_partial_bf_allfixed(default_elast_id,default_nest_id), color="black", lw=lw, alpha=alpha)
+axs[0,0].plot(num_firms_array, partial_diffPif_partial_bf_allfixed(default_elast_id,default_nest_id) + 1.96 * partial_diffPif_partial_bf_allfixed_se(default_elast_id,default_nest_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+axs[0,0].plot(num_firms_array, partial_diffPif_partial_bf_allfixed(default_elast_id,default_nest_id) - 1.96 * partial_diffPif_partial_bf_allfixed_se(default_elast_id,default_nest_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
 axs[0,0].set_xlabel("number of firms", fontsize=x_fontsize)
 axs[0,0].set_ylabel("\u20ac / person / MHz", fontsize=y_fontsize)
-axs[0,0].set_title("$\\partial \\Pi_{f} / \\partial B_{f}$", fontsize=title_fontsize, pad=title_pad)
+axs[0,0].set_title("$d \\Pi_{f} / d B_{f} - d \\Pi_{f} / d B_{f^{\\prime}}$", fontsize=title_fontsize, pad=title_pad)
 
 # partial_Pif_partial_b
 axs[0,1].plot(num_firms_array, partial_Pif_partial_b_allfixed(default_elast_id,default_nest_id), color="black", lw=lw, alpha=alpha)
@@ -631,7 +649,7 @@ axs[0,1].plot(num_firms_array, partial_Pif_partial_b_allfixed(default_elast_id,d
 axs[0,1].plot(num_firms_array, partial_Pif_partial_b_allfixed(default_elast_id,default_nest_id) - 1.96 * partial_Pif_partial_b_allfixed_se(default_elast_id,default_nest_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
 axs[0,1].set_xlabel("number of firms", fontsize=x_fontsize)
 axs[0,1].set_ylabel("\u20ac / person / MHz", fontsize=y_fontsize)
-axs[0,1].set_title("$\\partial \\Pi_{f} / \\partial B$", fontsize=title_fontsize, pad=title_pad)
+axs[0,1].set_title("$d \\Pi_{f} / d B$", fontsize=title_fontsize, pad=title_pad)
 
 # partial_CS_partial_b
 axs[0,2].plot(num_firms_array, partial_CS_partial_b_allfixed(default_elast_id,default_nest_id), color="black", lw=lw, alpha=alpha)
@@ -639,11 +657,11 @@ axs[0,2].plot(num_firms_array, partial_CS_partial_b_allfixed(default_elast_id,de
 axs[0,2].plot(num_firms_array, partial_CS_partial_b_allfixed(default_elast_id,default_nest_id) - 1.96 * partial_CS_partial_b_allfixed_se(default_elast_id,default_nest_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
 axs[0,2].set_xlabel("number of firms", fontsize=x_fontsize)
 axs[0,2].set_ylabel("\u20ac / person / MHz", fontsize=y_fontsize)
-axs[0,2].set_title("$\\partial CS / \\partial B$", fontsize=title_fontsize, pad=title_pad)
+axs[0,2].set_title("$d CS / d B$", fontsize=title_fontsize, pad=title_pad)
 
 # Set axis limits
-min_y_Pif_bf = np.nanmin(partial_Pif_partial_bf_allfixed(default_elast_id,default_nest_id)) - 0.006
-max_y_Pif_bf = np.nanmax(partial_Pif_partial_bf_allfixed(default_elast_id,default_nest_id)) + 0.006
+min_y_Pif_bf = np.nanmin(partial_diffPif_partial_bf_allfixed(default_elast_id,default_nest_id)) - 0.006
+max_y_Pif_bf = np.nanmax(partial_diffPif_partial_bf_allfixed(default_elast_id,default_nest_id)) + 0.006
 min_y_Pif_b = np.nanmin(partial_Pif_partial_b_allfixed(default_elast_id,default_nest_id)) - 0.001
 max_y_Pif_b = np.nanmax(partial_Pif_partial_b_allfixed(default_elast_id,default_nest_id)) + 0.0005
 min_y_CS_b = np.nanmin(partial_CS_partial_b_allfixed(default_elast_id,default_nest_id)) - 0.01
@@ -661,6 +679,9 @@ if save_:
 
 if print_:
     plt.show()
+    
+if save_:
+    create_file(f"{paths.stats_path}auction_val_allfixed.tex", f"{partial_diffPif_partial_bf_allfixed(default_elast_id,default_nest_id)[3] * 200.0:.2f}")
 
 
 
@@ -671,12 +692,12 @@ if print_:
 fig, axs = plt.subplots(1, 3, figsize=(9.0,4.0), sharex=True, squeeze=False)
 
 # partial_Pif_partial_bf
-axs[0,0].plot(num_firms_array, partial_Pif_partial_bf_allbw(default_elast_id,default_nest_id), color="black", lw=lw, alpha=alpha)
-axs[0,0].plot(num_firms_array, partial_Pif_partial_bf_allbw(default_elast_id,default_nest_id) + 1.96 * partial_Pif_partial_bf_allbw_se(default_elast_id,default_nest_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-axs[0,0].plot(num_firms_array, partial_Pif_partial_bf_allbw(default_elast_id,default_nest_id) - 1.96 * partial_Pif_partial_bf_allbw_se(default_elast_id,default_nest_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+axs[0,0].plot(num_firms_array, partial_diffPif_partial_bf_allbw(default_elast_id,default_nest_id), color="black", lw=lw, alpha=alpha)
+axs[0,0].plot(num_firms_array, partial_diffPif_partial_bf_allbw(default_elast_id,default_nest_id) + 1.96 * partial_diffPif_partial_bf_allbw_se(default_elast_id,default_nest_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+axs[0,0].plot(num_firms_array, partial_diffPif_partial_bf_allbw(default_elast_id,default_nest_id) - 1.96 * partial_diffPif_partial_bf_allbw_se(default_elast_id,default_nest_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
 axs[0,0].set_xlabel("number of firms", fontsize=x_fontsize)
 axs[0,0].set_ylabel("\u20ac / person / MHz", fontsize=y_fontsize)
-axs[0,0].set_title("$\\partial \\Pi_{f} / \\partial B_{f}$", fontsize=title_fontsize, pad=title_pad)
+axs[0,0].set_title("$d \\Pi_{f} / d B_{f} - d \\Pi_{f} / d B_{f^{\\prime}}$", fontsize=title_fontsize, pad=title_pad)
 
 # partial_Pif_partial_b
 axs[0,1].plot(num_firms_array, partial_Pif_partial_b_allbw(default_elast_id,default_nest_id), color="black", lw=lw, alpha=alpha)
@@ -684,7 +705,7 @@ axs[0,1].plot(num_firms_array, partial_Pif_partial_b_allbw(default_elast_id,defa
 axs[0,1].plot(num_firms_array, partial_Pif_partial_b_allbw(default_elast_id,default_nest_id) - 1.96 * partial_Pif_partial_b_allbw_se(default_elast_id,default_nest_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
 axs[0,1].set_xlabel("number of firms", fontsize=x_fontsize)
 axs[0,1].set_ylabel("\u20ac / person / MHz", fontsize=y_fontsize)
-axs[0,1].set_title("$\\partial \\Pi_{f} / \\partial B$", fontsize=title_fontsize, pad=title_pad)
+axs[0,1].set_title("$d \\Pi_{f} / d B$", fontsize=title_fontsize, pad=title_pad)
 
 # partial_CS_partial_b
 axs[0,2].plot(num_firms_array, partial_CS_partial_b_allbw(default_elast_id,default_nest_id), color="black", lw=lw, alpha=alpha)
@@ -692,11 +713,11 @@ axs[0,2].plot(num_firms_array, partial_CS_partial_b_allbw(default_elast_id,defau
 axs[0,2].plot(num_firms_array, partial_CS_partial_b_allbw(default_elast_id,default_nest_id) - 1.96 * partial_CS_partial_b_allbw_se(default_elast_id,default_nest_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
 axs[0,2].set_xlabel("number of firms", fontsize=x_fontsize)
 axs[0,2].set_ylabel("\u20ac / person / MHz", fontsize=y_fontsize)
-axs[0,2].set_title("$\\partial CS / \\partial B$", fontsize=title_fontsize, pad=title_pad)
+axs[0,2].set_title("$d CS / d B$", fontsize=title_fontsize, pad=title_pad)
 
 # Set axis limits
-min_y_Pif_bf = np.nanmin(partial_Pif_partial_bf_allbw(default_elast_id,default_nest_id)) - 0.002
-max_y_Pif_bf = np.nanmax(partial_Pif_partial_bf_allbw(default_elast_id,default_nest_id)) + 0.003
+min_y_Pif_bf = np.nanmin(partial_diffPif_partial_bf_allbw(default_elast_id,default_nest_id)) - 0.002
+max_y_Pif_bf = np.nanmax(partial_diffPif_partial_bf_allbw(default_elast_id,default_nest_id)) + 0.003
 min_y_Pif_b = np.nanmin(partial_Pif_partial_b_allbw(default_elast_id,default_nest_id)) - 0.001
 max_y_Pif_b = np.nanmax(partial_Pif_partial_b_allbw(default_elast_id,default_nest_id)) + 0.001
 min_y_CS_b = np.nanmin(partial_CS_partial_b_allbw(default_elast_id,default_nest_id)) - 0.002
@@ -714,6 +735,9 @@ if save_:
 
 if print_:
     plt.show()
+    
+if save_:
+    create_file(f"{paths.stats_path}auction_val_allbw.tex", f"{partial_diffPif_partial_bf_allbw(default_elast_id,default_nest_id)[3] * 200.0:.2f}")
 
 
 
@@ -745,7 +769,7 @@ def int_to_en(num):
 
     raise AssertionError("num is too large: %s" % str(num))
 
-ratio_CS_to_Pif = int_to_en(np.round(partial_CS_partial_b_allbw(default_elast_id,default_nest_id)[3] / partial_Pif_partial_bf_allbw(default_elast_id,default_nest_id)[3], 0).astype(int))
+ratio_CS_to_Pif = int_to_en(np.round(partial_CS_partial_b_allbw(default_elast_id,default_nest_id)[3] / partial_diffPif_partial_bf_allbw(default_elast_id,default_nest_id)[3], 0).astype(int))
 if print_:
     print(ratio_CS_to_Pif)
 
@@ -867,6 +891,7 @@ if print_:
 
 
 
+
 # %%
 # Endogenous Variables in "Short-run" Simulations
 
@@ -875,20 +900,20 @@ to_tex += " & $\\Delta$ 1$\\,$000 MB plan & $\\Delta$ 10$\\,$000 MB plan & $\\De
 to_tex += " & prices (in \euro{}) & prices (in \euro{}) & speeds (in Mbps) \\\\ \n"
 to_tex += "\\hline \n"
 to_tex += "short-run"
-to_tex += f" & ${round_var(p_stars_shortrun(default_elast_id,default_nest_id)[0,0], num_digits_round)}$ ${round_var(p_stars_shortrun_se(default_elast_id,default_nest_id)[1,0], num_digits_round, stderrs=True)}$"
-to_tex += f" & ${round_var(p_stars_shortrun(default_elast_id,default_nest_id)[0,1], num_digits_round)}$ ${round_var(p_stars_shortrun_se(default_elast_id,default_nest_id)[1,1], num_digits_round, stderrs=True)}$"
-to_tex += f" & ${round_var(q_stars_shortrun(default_elast_id,default_nest_id)[0], num_digits_round)}$ ${round_var(q_stars_shortrun_se(default_elast_id,default_nest_id)[1], num_digits_round, stderrs=True)}$"
+to_tex += f" & ${round_var(p_stars_shortrun(default_elast_id,default_nest_id)[0,0], num_digits_round)}$ ${round_var(p_stars_shortrun_se(default_elast_id,default_nest_id)[0,0], num_digits_round, stderrs=True)}$"
+to_tex += f" & ${round_var(p_stars_shortrun(default_elast_id,default_nest_id)[0,1], num_digits_round)}$ ${round_var(p_stars_shortrun_se(default_elast_id,default_nest_id)[0,1], num_digits_round, stderrs=True)}$"
+to_tex += f" & ${round_var(q_stars_shortrun(default_elast_id,default_nest_id)[0], num_digits_round)}$ ${round_var(q_stars_shortrun_se(default_elast_id,default_nest_id)[0], num_digits_round, stderrs=True)}$"
 to_tex += " \\\\ \n"
 to_tex += "long-run"
-to_tex += f" & ${round_var(p_stars_shortrun(default_elast_id,default_nest_id)[1,0], num_digits_round)}$ ${round_var(p_stars_shortrun_se(default_elast_id,default_nest_id)[0,0], num_digits_round, stderrs=True)}$"
-to_tex += f" & ${round_var(p_stars_shortrun(default_elast_id,default_nest_id)[1,1], num_digits_round)}$ ${round_var(p_stars_shortrun_se(default_elast_id,default_nest_id)[0,1], num_digits_round, stderrs=True)}$"
-to_tex += f" & ${round_var(q_stars_shortrun(default_elast_id,default_nest_id)[1], num_digits_round)}$ ${round_var(q_stars_shortrun_se(default_elast_id,default_nest_id)[0], num_digits_round, stderrs=True)}$"
+to_tex += f" & ${round_var(p_stars_shortrun(default_elast_id,default_nest_id)[1,0], num_digits_round)}$ ${round_var(p_stars_shortrun_se(default_elast_id,default_nest_id)[1,0], num_digits_round, stderrs=True)}$"
+to_tex += f" & ${round_var(p_stars_shortrun(default_elast_id,default_nest_id)[1,1], num_digits_round)}$ ${round_var(p_stars_shortrun_se(default_elast_id,default_nest_id)[1,1], num_digits_round, stderrs=True)}$"
+to_tex += f" & ${round_var(q_stars_shortrun(default_elast_id,default_nest_id)[1], num_digits_round)}$ ${round_var(q_stars_shortrun_se(default_elast_id,default_nest_id)[1], num_digits_round, stderrs=True)}$"
 to_tex += " \\\\ \n"
 to_tex += "\\hline \n" 
 to_tex += "difference"
-to_tex += f" & ${round_var(p_stars_shortrun(default_elast_id,default_nest_id)[2,0], num_digits_round)}$ ${round_var(p_stars_shortrun_se(default_elast_id,default_nest_id)[0,0], num_digits_round, stderrs=True)}$"
-to_tex += f" & ${round_var(p_stars_shortrun(default_elast_id,default_nest_id)[2,1], num_digits_round)}$ ${round_var(p_stars_shortrun_se(default_elast_id,default_nest_id)[0,1], num_digits_round, stderrs=True)}$"
-to_tex += f" & ${round_var(q_stars_shortrun(default_elast_id,default_nest_id)[2], num_digits_round)}$ ${round_var(q_stars_shortrun_se(default_elast_id,default_nest_id)[0], num_digits_round, stderrs=True)}$"
+to_tex += f" & ${round_var(p_stars_shortrun(default_elast_id,default_nest_id)[2,0], num_digits_round)}$ ${round_var(p_stars_shortrun_se(default_elast_id,default_nest_id)[2,0], num_digits_round, stderrs=True)}$"
+to_tex += f" & ${round_var(p_stars_shortrun(default_elast_id,default_nest_id)[2,1], num_digits_round)}$ ${round_var(p_stars_shortrun_se(default_elast_id,default_nest_id)[2,1], num_digits_round, stderrs=True)}$"
+to_tex += f" & ${round_var(q_stars_shortrun(default_elast_id,default_nest_id)[2], num_digits_round)}$ ${round_var(q_stars_shortrun_se(default_elast_id,default_nest_id)[2], num_digits_round, stderrs=True)}$"
 to_tex += " \\\\ \n"
 to_tex += "\\hline \n" 
 to_tex += "\\end{tabular} \n"
@@ -907,20 +932,20 @@ to_tex = "\\begin{tabular}{c c c c} \n"
 to_tex += " & $\\Delta$ CS & $\\Delta$ PS & $\\Delta$ TS \\\\ \n"
 to_tex += "\\hline \n"
 to_tex += "short-run"
-to_tex += f" & ${round_var(cs_shortrun(default_elast_id,default_nest_id)[0], num_digits_round)}$ ${round_var(cs_shortrun_se(default_elast_id,default_nest_id)[1], num_digits_round, stderrs=True)}$"
-to_tex += f" & ${round_var(ps_shortrun(default_elast_id,default_nest_id)[0], num_digits_round)}$ ${round_var(ps_shortrun_se(default_elast_id,default_nest_id)[1], num_digits_round, stderrs=True)}$"
-to_tex += f" & ${round_var(ts_shortrun(default_elast_id,default_nest_id)[0], num_digits_round)}$ ${round_var(ts_shortrun_se(default_elast_id,default_nest_id)[1], num_digits_round, stderrs=True)}$"
+to_tex += f" & ${round_var(cs_shortrun(default_elast_id,default_nest_id)[0], num_digits_round)}$ ${round_var(cs_shortrun_se(default_elast_id,default_nest_id)[0], num_digits_round, stderrs=True)}$"
+to_tex += f" & ${round_var(ps_shortrun(default_elast_id,default_nest_id)[0], num_digits_round)}$ ${round_var(ps_shortrun_se(default_elast_id,default_nest_id)[0], num_digits_round, stderrs=True)}$"
+to_tex += f" & ${round_var(ts_shortrun(default_elast_id,default_nest_id)[0], num_digits_round)}$ ${round_var(ts_shortrun_se(default_elast_id,default_nest_id)[0], num_digits_round, stderrs=True)}$"
 to_tex += " \\\\ \n"
 to_tex += "long-run"
-to_tex += f" & ${round_var(cs_shortrun(default_elast_id,default_nest_id)[1], num_digits_round)}$ ${round_var(cs_shortrun_se(default_elast_id,default_nest_id)[0], num_digits_round, stderrs=True)}$"
-to_tex += f" & ${round_var(ps_shortrun(default_elast_id,default_nest_id)[1], num_digits_round)}$ ${round_var(ps_shortrun_se(default_elast_id,default_nest_id)[0], num_digits_round, stderrs=True)}$"
-to_tex += f" & ${round_var(ts_shortrun(default_elast_id,default_nest_id)[1], num_digits_round)}$ ${round_var(ts_shortrun_se(default_elast_id,default_nest_id)[0], num_digits_round, stderrs=True)}$"
+to_tex += f" & ${round_var(cs_shortrun(default_elast_id,default_nest_id)[1], num_digits_round)}$ ${round_var(cs_shortrun_se(default_elast_id,default_nest_id)[1], num_digits_round, stderrs=True)}$"
+to_tex += f" & ${round_var(ps_shortrun(default_elast_id,default_nest_id)[1], num_digits_round)}$ ${round_var(ps_shortrun_se(default_elast_id,default_nest_id)[1], num_digits_round, stderrs=True)}$"
+to_tex += f" & ${round_var(ts_shortrun(default_elast_id,default_nest_id)[1], num_digits_round)}$ ${round_var(ts_shortrun_se(default_elast_id,default_nest_id)[1], num_digits_round, stderrs=True)}$"
 to_tex += " \\\\ \n"
 to_tex += "\\hline \n" 
 to_tex += "difference"
-to_tex += f" & ${round_var(cs_shortrun(default_elast_id,default_nest_id)[2], num_digits_round)}$ ${round_var(cs_shortrun_se(default_elast_id,default_nest_id)[0], num_digits_round, stderrs=True)}$"
-to_tex += f" & ${round_var(ps_shortrun(default_elast_id,default_nest_id)[2], num_digits_round)}$ ${round_var(ps_shortrun_se(default_elast_id,default_nest_id)[0], num_digits_round, stderrs=True)}$"
-to_tex += f" & ${round_var(ts_shortrun(default_elast_id,default_nest_id)[2], num_digits_round)}$ ${round_var(ts_shortrun_se(default_elast_id,default_nest_id)[0], num_digits_round, stderrs=True)}$"
+to_tex += f" & ${round_var(cs_shortrun(default_elast_id,default_nest_id)[2], num_digits_round)}$ ${round_var(cs_shortrun_se(default_elast_id,default_nest_id)[2], num_digits_round, stderrs=True)}$"
+to_tex += f" & ${round_var(ps_shortrun(default_elast_id,default_nest_id)[2], num_digits_round)}$ ${round_var(ps_shortrun_se(default_elast_id,default_nest_id)[2], num_digits_round, stderrs=True)}$"
+to_tex += f" & ${round_var(ts_shortrun(default_elast_id,default_nest_id)[2], num_digits_round)}$ ${round_var(ts_shortrun_se(default_elast_id,default_nest_id)[2], num_digits_round, stderrs=True)}$"
 to_tex += " \\\\ \n"
 to_tex += "\\hline \n" 
 to_tex += "\\end{tabular} \n"
@@ -2062,22 +2087,22 @@ pos_end = pos_end - 1 + 0.5 # correct position, then want to end a little to the
 elasts_vals_ = [f"E = {elast_}" for i, elast_ in enumerate(avg_price_elasts[elast_ids_sparse])]
 
 # Populate arrays
-partial_Pif_partial_bf_allfixed_ = np.zeros(num_x_axis_pts)
-partial_Pif_partial_bf_allfixed_se_ = np.zeros(num_x_axis_pts)
+partial_diffPif_partial_bf_allfixed_ = np.zeros(num_x_axis_pts)
+partial_diffPif_partial_bf_allfixed_se_ = np.zeros(num_x_axis_pts)
 partial_Pif_partial_b_allfixed_ = np.zeros(num_x_axis_pts)
 partial_Pif_partial_b_allfixed_se_ = np.zeros(num_x_axis_pts)
 partial_CS_partial_b_allfixed_ = np.zeros(num_x_axis_pts)
 partial_CS_partial_b_allfixed_se_ = np.zeros(num_x_axis_pts)
-partial_Pif_partial_bf_allbw_ = np.zeros(num_x_axis_pts)
-partial_Pif_partial_bf_allbw_se_ = np.zeros(num_x_axis_pts)
+partial_diffPif_partial_bf_allbw_ = np.zeros(num_x_axis_pts)
+partial_diffPif_partial_bf_allbw_se_ = np.zeros(num_x_axis_pts)
 partial_Pif_partial_b_allbw_ = np.zeros(num_x_axis_pts)
 partial_Pif_partial_b_allbw_se_ = np.zeros(num_x_axis_pts)
 partial_CS_partial_b_allbw_ = np.zeros(num_x_axis_pts)
 partial_CS_partial_b_allbw_se_ = np.zeros(num_x_axis_pts)
 for i in range(num_x_axis_pts):
     if (nest_idx[i] < nest_ids_sparse.shape[0]) and (elast_idx[i] < elast_ids_sparse.shape[0]):
-        partial_Pif_partial_bf_allfixed_[i] = partial_Pif_partial_bf_allfixed(elast_ids_sparse[elast_idx[i]],nest_ids_sparse[nest_idx[i]])[default_num_firm_idx]
-        partial_Pif_partial_bf_allfixed_se_[i] = partial_Pif_partial_bf_allfixed_se(elast_ids_sparse[elast_idx[i]],nest_ids_sparse[nest_idx[i]])[default_num_firm_idx]
+        partial_diffPif_partial_bf_allfixed_[i] = partial_diffPif_partial_bf_allfixed(elast_ids_sparse[elast_idx[i]],nest_ids_sparse[nest_idx[i]])[default_num_firm_idx]
+        partial_diffPif_partial_bf_allfixed_se_[i] = partial_diffPif_partial_bf_allfixed_se(elast_ids_sparse[elast_idx[i]],nest_ids_sparse[nest_idx[i]])[default_num_firm_idx]
         
         partial_Pif_partial_b_allfixed_[i] = partial_Pif_partial_b_allfixed(elast_ids_sparse[elast_idx[i]],nest_ids_sparse[nest_idx[i]])[default_num_firm_idx]
         partial_Pif_partial_b_allfixed_se_[i] = partial_Pif_partial_b_allfixed_se(elast_ids_sparse[elast_idx[i]],nest_ids_sparse[nest_idx[i]])[default_num_firm_idx]
@@ -2085,8 +2110,8 @@ for i in range(num_x_axis_pts):
         partial_CS_partial_b_allfixed_[i] = partial_CS_partial_b_allfixed(elast_ids_sparse[elast_idx[i]],nest_ids_sparse[nest_idx[i]])[default_num_firm_idx]
         partial_CS_partial_b_allfixed_se_[i] = partial_CS_partial_b_allfixed_se(elast_ids_sparse[elast_idx[i]],nest_ids_sparse[nest_idx[i]])[default_num_firm_idx]
         
-        partial_Pif_partial_bf_allbw_[i] = partial_Pif_partial_bf_allbw(elast_ids_sparse[elast_idx[i]],nest_ids_sparse[nest_idx[i]])[default_num_firm_idx]
-        partial_Pif_partial_bf_allbw_se_[i] = partial_Pif_partial_bf_allbw_se(elast_ids_sparse[elast_idx[i]],nest_ids_sparse[nest_idx[i]])[default_num_firm_idx]
+        partial_diffPif_partial_bf_allbw_[i] = partial_diffPif_partial_bf_allbw(elast_ids_sparse[elast_idx[i]],nest_ids_sparse[nest_idx[i]])[default_num_firm_idx]
+        partial_diffPif_partial_bf_allbw_se_[i] = partial_diffPif_partial_bf_allbw_se(elast_ids_sparse[elast_idx[i]],nest_ids_sparse[nest_idx[i]])[default_num_firm_idx]
         
         partial_Pif_partial_b_allbw_[i] = partial_Pif_partial_b_allbw(elast_ids_sparse[elast_idx[i]],nest_ids_sparse[nest_idx[i]])[default_num_firm_idx]
         partial_Pif_partial_b_allbw_se_[i] = partial_Pif_partial_b_allbw_se(elast_ids_sparse[elast_idx[i]],nest_ids_sparse[nest_idx[i]])[default_num_firm_idx]
@@ -2094,8 +2119,8 @@ for i in range(num_x_axis_pts):
         partial_CS_partial_b_allbw_[i] = partial_CS_partial_b_allbw(elast_ids_sparse[elast_idx[i]],nest_ids_sparse[nest_idx[i]])[default_num_firm_idx]
         partial_CS_partial_b_allbw_se_[i] = partial_CS_partial_b_allbw_se(elast_ids_sparse[elast_idx[i]],nest_ids_sparse[nest_idx[i]])[default_num_firm_idx]
     else:
-        partial_Pif_partial_bf_allfixed_[i] = np.nan
-        partial_Pif_partial_bf_allfixed_se_[i] = np.nan
+        partial_diffPif_partial_bf_allfixed_[i] = np.nan
+        partial_diffPif_partial_bf_allfixed_se_[i] = np.nan
         
         partial_Pif_partial_b_allfixed_[i] = np.nan
         partial_Pif_partial_b_allfixed_se_[i] = np.nan
@@ -2103,8 +2128,8 @@ for i in range(num_x_axis_pts):
         partial_CS_partial_b_allfixed_[i] = np.nan
         partial_CS_partial_b_allfixed_se_[i] = np.nan
         
-        partial_Pif_partial_bf_allbw_[i] = np.nan
-        partial_Pif_partial_bf_allbw_se_[i] = np.nan
+        partial_diffPif_partial_bf_allbw_[i] = np.nan
+        partial_diffPif_partial_bf_allbw_se_[i] = np.nan
         
         partial_Pif_partial_b_allbw_[i] = np.nan
         partial_Pif_partial_b_allbw_se_[i] = np.nan
@@ -2112,9 +2137,9 @@ for i in range(num_x_axis_pts):
         partial_CS_partial_b_allbw_[i] = np.nan
         partial_CS_partial_b_allbw_se_[i] = np.nan
         
-axs[0,0].bar(x_pos, partial_Pif_partial_bf_allfixed_, yerr=partial_Pif_partial_bf_allfixed_se_ * 1.96, capsize=7.0, color="black", alpha=0.8 * alpha)
+axs[0,0].bar(x_pos, partial_diffPif_partial_bf_allfixed_, yerr=partial_diffPif_partial_bf_allfixed_se_ * 1.96, capsize=7.0, color="black", alpha=0.8 * alpha)
 
-axs[0,1].bar(x_pos, partial_Pif_partial_bf_allbw_, yerr=partial_Pif_partial_bf_allbw_se_ * 1.96, capsize=7.0, color="black", alpha=0.8 * alpha)
+axs[0,1].bar(x_pos, partial_diffPif_partial_bf_allbw_, yerr=partial_diffPif_partial_bf_allbw_se_ * 1.96, capsize=7.0, color="black", alpha=0.8 * alpha)
 
 axs[1,0].bar(x_pos, partial_Pif_partial_b_allfixed_, yerr=partial_Pif_partial_b_allfixed_se_ * 1.96, capsize=7.0, color="black", alpha=0.8 * alpha)
 
@@ -2126,8 +2151,8 @@ axs[2,1].bar(x_pos, partial_CS_partial_b_allbw_, yerr=partial_CS_partial_b_allbw
 
 # Set y axes
 margin = 0.1
-min_y_0 = np.minimum(np.nanmin(partial_Pif_partial_bf_allfixed_ - 1.96 * partial_Pif_partial_bf_allfixed_se_), np.nanmin(partial_Pif_partial_bf_allbw_ - 1.96 * partial_Pif_partial_bf_allbw_se_))
-max_y_0 = np.maximum(np.nanmax(partial_Pif_partial_bf_allfixed_ + 1.96 * partial_Pif_partial_bf_allfixed_se_), np.nanmax(partial_Pif_partial_bf_allbw_ + 1.96 * partial_Pif_partial_bf_allbw_se_))
+min_y_0 = np.minimum(np.nanmin(partial_diffPif_partial_bf_allfixed_ - 1.96 * partial_diffPif_partial_bf_allfixed_se_), np.nanmin(partial_diffPif_partial_bf_allbw_ - 1.96 * partial_diffPif_partial_bf_allbw_se_))
+max_y_0 = np.maximum(np.nanmax(partial_diffPif_partial_bf_allfixed_ + 1.96 * partial_diffPif_partial_bf_allfixed_se_), np.nanmax(partial_diffPif_partial_bf_allbw_ + 1.96 * partial_diffPif_partial_bf_allbw_se_))
 diff_y_0 = max_y_0 - min_y_0
 min_y_1 = np.minimum(np.nanmin(partial_Pif_partial_b_allfixed_ - 1.96 * partial_Pif_partial_b_allfixed_se_), np.nanmin(partial_Pif_partial_b_allbw_ - 1.96 * partial_Pif_partial_b_allbw_se_))
 max_y_1 = np.maximum(np.nanmax(partial_Pif_partial_b_allfixed_ + 1.96 * partial_Pif_partial_b_allfixed_se_), np.nanmax(partial_Pif_partial_b_allbw_ + 1.96 * partial_Pif_partial_b_allbw_se_))
@@ -2158,7 +2183,7 @@ for i in range(3):
                 text_add.set_weight("bold")
         
 cols = ["fixed cost", "bandwidth cost"]
-rows = ["$\\frac{\\partial \\Pi_{f}}{\\partial b_{f}}$", "$\\frac{\\partial \\Pi_{f}}{\\partial b}$", "$\\frac{\\partial CS}{\\partial b}$"]
+rows = ["$\\frac{d \\Pi_{f}}{d B_{f}} - \\frac{d \\Pi_{f}}{d B_{f^{\\prime}}}$", "$\\frac{d \\Pi_{f}}{d B}$", "$\\frac{d CS}{d B}$"]
 pad = 12
 for ax, col in zip(axs[0], cols):
     ax.annotate(col, xy=(0.5, 1), xytext=(0, pad),
@@ -2182,14 +2207,14 @@ if print_:
     
 if save_:
     # Reshape bandwidth derivative arrays to be elasticity x nesting param
-    partial_Pif_partial_bf_allfixed_reshape = np.reshape(partial_Pif_partial_bf_allfixed_[use_x_pos], (elast_ids_sparse.shape[0], nest_ids_sparse.shape[0]))
-    partial_Pif_partial_bf_allbw_reshape = np.reshape(partial_Pif_partial_bf_allbw_[use_x_pos], (elast_ids_sparse.shape[0], nest_ids_sparse.shape[0]))
+    partial_diffPif_partial_bf_allfixed_reshape = np.reshape(partial_diffPif_partial_bf_allfixed_[use_x_pos], (elast_ids_sparse.shape[0], nest_ids_sparse.shape[0]))
+    partial_diffPif_partial_bf_allbw_reshape = np.reshape(partial_diffPif_partial_bf_allbw_[use_x_pos], (elast_ids_sparse.shape[0], nest_ids_sparse.shape[0]))
     partial_CS_partial_b_allfixed_reshape = np.reshape(partial_CS_partial_b_allfixed_[use_x_pos], (elast_ids_sparse.shape[0], nest_ids_sparse.shape[0]))
     partial_CS_partial_b_allbw_reshape = np.reshape(partial_CS_partial_b_allbw_[use_x_pos], (elast_ids_sparse.shape[0], nest_ids_sparse.shape[0]))
 
     # Create ratios
-    ratio_allfixed = np.round(partial_CS_partial_b_allfixed_reshape / partial_Pif_partial_bf_allfixed_reshape, 1)
-    ratio_allbw = np.round(partial_CS_partial_b_allbw_reshape / partial_Pif_partial_bf_allbw_reshape, 1)
+    ratio_allfixed = np.round(partial_CS_partial_b_allfixed_reshape / partial_diffPif_partial_bf_allfixed_reshape, 1)
+    ratio_allbw = np.round(partial_CS_partial_b_allbw_reshape / partial_diffPif_partial_bf_allbw_reshape, 1)
 
     ratio_allfixed_df = pd.DataFrame(ratio_allfixed, index=tuple([f"$E$ = {avg_price_elasts[elast_id]}" for i, elast_id in enumerate(elast_ids_sparse)]), columns=tuple([f"$\\sigma$ = {sigmas[nest_id]}" for i, nest_id in enumerate(nest_ids_sparse)]))
     ratio_allbw_df = pd.DataFrame(ratio_allbw, index=tuple([f"$E$ = {avg_price_elasts[elast_id]}" for i, elast_id in enumerate(elast_ids_sparse)]), columns=tuple([f"$\\sigma$ = {sigmas[nest_id]}" for i, nest_id in enumerate(nest_ids_sparse)]))
@@ -2377,3 +2402,79 @@ if save_:
 
 if print_:
     plt.show()
+    
+# Channel capacity as function of radius
+radii = np.linspace(0.01, 4.0, 100)
+hata_losses = infr.hata_loss(radii, infr.freq_rep, infr.height_rep)
+
+# Path loss as function of radius graph
+fig, axs = plt.subplots(1,1)
+
+axs.plot(radii, infr.A0 - hata_losses, color="black")
+
+axs.axhline(y=infr.JN_noise, color="black", linestyle="dashed")
+
+df_inf = pd.read_csv(f"{paths.data_path}infrastructure_clean.csv", engine="python") # engine helps encoding, error with commune names, but doesn't matter b/c not used
+df_inf = df_inf[df_inf['market'] > 0] # don't include Rest-of-France market
+area = df_inf['area_effective'].values # adjusted commune area
+stations = df_inf[[f"stations{i}" for i in range(1,5)]].values # number of base stations
+radius = np.sqrt(area[:,np.newaxis] / stations / (np.sqrt(3.) * 3. / 2.)) # cell radius assuming homogeneous hexagonal cells, in km
+axs.axvline(x=np.mean(radius[np.isfinite(radius)]), color="red", linestyle="dashed")
+
+default_elast_id = paths.default_elast_id
+default_nest_id = paths.default_nest_id
+densities = lambda x,y: np.load(f"{paths.arrays_path}cntrfctl_densities_e{x}_n{y}.npy")
+R_stars_dens = lambda x,y: np.load(f"{paths.arrays_path}R_stars_dens_e{x}_n{y}.npy")
+axs.axvline(x=R_stars_dens(default_elast_id, default_nest_id)[3,np.argsort(densities(default_elast_id, default_nest_id))[1]], color="red", linestyle="dashed")
+axs.axvline(x=R_stars_dens(default_elast_id, default_nest_id)[3,np.argsort(densities(default_elast_id, default_nest_id))[-2]], color="red", linestyle="dashed")
+
+axs.set_ylim((-115.0, 0.0))
+axs.set_xlabel("distance (km)")
+
+if save_:
+    plt.savefig(f"{paths.graphs_path}path_loss_radius.pdf", bbox_inches="tight", transparent=True)
+
+if print_:
+    plt.show()
+    
+channel_capacities = np.zeros(radii.shape)
+gamma = np.load(f"{paths.arrays_path}cntrfctl_gamma.npy")[0]
+bw = np.load(f"{paths.arrays_path}cntrfctl_bw_vals_e{default_elast_id}_n{default_nest_id}.npy")[0] / 4.0
+for i, radius_ in enumerate(radii):
+    channel_capacities[i] = infr.rho_C_hex(bw, radius_, gamma)
+
+# Channel capacity graph
+fig, axs = plt.subplots(1,1)
+
+axs.plot(radii, channel_capacities, color="black")
+
+low_R = R_stars_dens(default_elast_id, default_nest_id)[3,np.argsort(densities(default_elast_id, default_nest_id))[1]] # France density
+high_R = R_stars_dens(default_elast_id, default_nest_id)[3,np.argsort(densities(default_elast_id, default_nest_id))[-2]] # France contraharmonic mean density
+data_R = np.mean(radius[np.isfinite(radius)])
+axs.axvline(x=data_R, color="red", linestyle="dashed")
+axs.axvline(x=low_R, color="red", linestyle="dashed")
+axs.axvline(x=high_R, color="red", linestyle="dashed")
+
+axs.set_ylim((36.0, 44.0))
+axs.set_xlabel("distance (km)")
+axs.set_ylabel("channel capacity (Mbps)")
+
+axs.text(low_R + 0.1, channel_capacities[np.argmin(np.abs(radii - low_R))], "$R_{low\ density}^{*}$")
+axs.text(high_R + 0.1, channel_capacities[np.argmin(np.abs(radii - high_R))] + 0.3, "$R_{high\ density}^{*}$")
+axs.text(data_R + 0.1, channel_capacities[np.argmin(np.abs(radii - data_R))] + 0.075, "$R_{data}$")
+
+if save_:
+    plt.savefig(f"{paths.graphs_path}channel_capacity_radius.pdf", bbox_inches="tight", transparent=True)
+
+if print_:
+    plt.show()
+    
+# Process information about xis
+xis = np.load(f"{paths.arrays_path}xis_e{default_elast_id}_n{default_nest_id}.npy")
+xis_Org_stdev = np.std(xis[:,ds.firms == 1], ddof=1) # standard deviation of Orange xis
+xis_across_firms = np.unique(xis[:,ds.firms != 1]) # non-Orange xis
+thetahat = np.load(f"{paths.arrays_path}thetahat_e{default_elast_id}_n{default_nest_id}.npy")
+xis_across_firms = np.concatenate((xis_across_firms, np.array([thetahat[coef.O]])))
+xis_across_firms_stdev = np.std(xis_across_firms, ddof=1)
+create_file(f"{paths.stats_path}xis_across_firms_stdev.tex", f"{xis_across_firms_stdev:.3}")
+create_file(f"{paths.stats_path}xis_Org_stdev.tex", f"{xis_Org_stdev:.3}")

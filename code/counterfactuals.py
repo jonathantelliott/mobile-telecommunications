@@ -144,11 +144,20 @@ ds.data = ds.data[~markets_org_free_share,:,:]
 population = population[~markets_org_free_share]
 stations = stations[~markets_org_free_share,:]
 cc_tot = cc_tot[~markets_org_free_share,:]
+q_dem_tot = q_dem_tot[~markets_org_free_share]
+q_avg = q_avg[~markets_org_free_share,:]
 radius = radius[~markets_org_free_share,:]
 bw_4g_equiv = bw_4g_equiv[~markets_org_free_share,:]
 lamda = lamda[~markets_org_free_share]
 area = area[~markets_org_free_share]
 pop_dens = pop_dens[~markets_org_free_share]
+if task_id == 0:
+    np.save(f"{paths.arrays_path}spectral_efficiencies.npy", lamda)
+    np.save(f"{paths.arrays_path}populations.npy", population)
+    np.save(f"{paths.arrays_path}cc_tot.npy", cc_tot)
+    np.save(f"{paths.arrays_path}q_dem_tot.npy", q_dem_tot)
+    np.save(f"{paths.arrays_path}q_avg.npy", q_avg)
+    np.save(f"{paths.arrays_path}bw_4g_equiv.npy", bw_4g_equiv)
 
 # Get array of product prices
 prices = ds.data[0,:,pidx] # 0 b/c market doesn't matter
@@ -164,7 +173,7 @@ Sigma = vm.V(G_n, What, np.linalg.inv(What))
 # %%
 # Determine the size of epsilon to numerically approximate the gradient
 compute_std_errs = True
-eps_grad = 0.01
+eps_grad = 0.025
 thetas_to_compute = np.vstack((thetahat[np.newaxis,:], thetahat[np.newaxis,:] + np.identity(thetahat.shape[0]) * eps_grad, thetahat[np.newaxis,:] - np.identity(thetahat.shape[0]) * eps_grad))
 
 # Equilibria parameters
@@ -184,6 +193,7 @@ vlow_dens = 43.1 # pop dens (people / km^2) of all of USA
 low_dens = 123.9 # pop dens (people / km^2) of all of France
 high_dens = 20588.2 # pop dens of Paris
 densities = np.array([rep_density, vlow_dens, low_dens, high_dens]) # rep_density must be first (because its results just get copied over from the regular exercise)
+densities_areatype = np.array(["urban", "urban", "urban", "urban"]) # np.array(["urban", "rural", "suburban", "urban"]) # area types used for Hata path loss model
 np.save(f"{paths.arrays_path}cntrfctl_densities_e{elast_id}_n{nest_id}.npy", densities)
 np.save(f"{paths.arrays_path}cntrfctl_densities_pop_e{elast_id}_n{nest_id}.npy", densities * rep_market_size)
 
@@ -193,6 +203,10 @@ low_bw_val = market_bw * 0.5
 high_bw_val = market_bw * 1.5
 bw_vals = np.array([market_bw, low_bw_val, high_bw_val]) # market_bw must be first (because its results just get copied over from the regular exercise)
 np.save(f"{paths.arrays_path}cntrfctl_bw_vals_e{elast_id}_n{nest_id}.npy", bw_vals)
+
+# Save spectral efficiency used in counterfactuals
+if task_id == 0:
+    np.save(f"{paths.arrays_path}cntrfctl_gamma.npy", np.array([np.average(lamda, weights=population)]))
 
 # Welfare options
 include_logit_shock = False
@@ -209,6 +223,8 @@ def compute_equilibria(theta_n, p_starting_vals=None, R_starting_vals=None):
     # Recover xis
     start = time.time()
     xis = blp.xi(ds, theta_sigma, ds.data, None)
+    if theta_n == 0:
+        np.save(f"{paths.arrays_path}xis_e{elast_id}_n{nest_id}.npy", xis)
     if print_updates:
         print(f"theta_n={theta_n}: Finished calculating xis in {np.round(time.time() - start, 1)} seconds.", flush=True)
 
@@ -223,7 +239,7 @@ def compute_equilibria(theta_n, p_starting_vals=None, R_starting_vals=None):
         'firms_share': np.array([True, True, False, True]), # all firms share with MVNO, except Free
         'include': True
     }
-    Jac = pe.s_jacobian_p(prices, cc_tot, ds, xis, theta_sigma, stations, population, impute_MVNO=impute_MVNO, q_0=None, eps=0.01)
+    Jac = pe.s_jacobian_p(prices, cc_tot, ds, xis, theta_sigma, stations, population, impute_MVNO=impute_MVNO, q_0=None, eps=0.001)
 
     # Determine per-user costs
     c_u = np.zeros(ds.J)
@@ -245,7 +261,7 @@ def compute_equilibria(theta_n, p_starting_vals=None, R_starting_vals=None):
         'firms_share': np.array([True, True, False, True]), # all firms share with MVNO, except Free
         'include': True
     }
-    MR = ie.pi_deriv_R(radius, bw_4g_equiv, lamda, ds, xis, theta_sigma, population, area, c_u, impute_MVNO=impute_MVNO, q_0=None, eps=0.01)
+    MR = ie.pi_deriv_R(radius, bw_4g_equiv, lamda, ds, xis, theta_sigma, population, area, c_u, impute_MVNO=impute_MVNO, q_0=None, eps=0.001)
 
     # Determine per-base station costs
     c_R = MR / infr.num_stations_deriv(radius, area[:,np.newaxis])
@@ -256,7 +272,7 @@ def compute_equilibria(theta_n, p_starting_vals=None, R_starting_vals=None):
     # Compute counterfactual equilibria
 
     per_user_costs = np.array([np.mean(c_u[ds.data[0,:,dlimidx] < 5000.0]), np.mean(c_u[ds.data[0,:,dlimidx] >= 5000.0])])
-    per_base_station_per_bw_cost = np.average(c_R[:,np.arange(4) != 2] / bw_4g_equiv[:,np.arange(4) != 2], weights=np.tile(population[:,np.newaxis], (1,3)))
+    per_base_station_per_bw_cost = np.average(c_R / bw_4g_equiv, weights=np.tile(population[:,np.newaxis], (1,4)))
 
     pop_cntrfctl = np.ones((1,)) * rep_population
     market_size_cntrfctl = np.ones((1,)) * rep_market_size
@@ -279,9 +295,13 @@ def compute_equilibria(theta_n, p_starting_vals=None, R_starting_vals=None):
     partial_elasts = np.zeros((num_firms_array.shape[0], num_prods)) * np.nan
 
     partial_Pif_partial_bf_allfixed = np.zeros(num_firms_array.shape) * np.nan
+    partial_Piotherf_partial_bf_allfixed = np.zeros(num_firms_array.shape) * np.nan
+    partial_diffPif_partial_bf_allfixed = np.zeros(num_firms_array.shape) * np.nan
     partial_Pif_partial_b_allfixed = np.zeros(num_firms_array.shape) * np.nan
     partial_CS_partial_b_allfixed = np.zeros(num_firms_array.shape) * np.nan
     partial_Pif_partial_bf_allbw = np.zeros(num_firms_array.shape) * np.nan
+    partial_Piotherf_partial_bf_allbw = np.zeros(num_firms_array.shape) * np.nan
+    partial_diffPif_partial_bf_allbw = np.zeros(num_firms_array.shape) * np.nan
     partial_Pif_partial_b_allbw = np.zeros(num_firms_array.shape) * np.nan
     partial_CS_partial_b_allbw = np.zeros(num_firms_array.shape) * np.nan
     
@@ -431,13 +451,13 @@ def compute_equilibria(theta_n, p_starting_vals=None, R_starting_vals=None):
         p_0 = p_0s[i,:]
         p_0_1p = p_0[select_1p]
         
-        def simple_symmetric_eqm(bw_cntrfctl, gamma_cntrfctl, ds_cntrfctl, xis_cntrfctl, theta_sigma, pop_cntrfctl, market_size_cntrfctl, c_u_cntrfctl, c_R_cntrfctl, R_0, p_0, num_firms, num_prods):
+        def simple_symmetric_eqm(bw_cntrfctl, gamma_cntrfctl, ds_cntrfctl, xis_cntrfctl, theta_sigma, pop_cntrfctl, market_size_cntrfctl, c_u_cntrfctl, c_R_cntrfctl, R_0, p_0, num_firms, num_prods, areatype="urban"):
             """Compute the symmetric equilibrium."""
             
             ds_cntrfctl_ = copy.deepcopy(ds_cntrfctl)
             
             # Compute the equilibrium
-            R_star, p_star, q_star, success = ie.infrastructure_eqm(bw_cntrfctl, gamma_cntrfctl, ds_cntrfctl_, xis_cntrfctl, theta_sigma, pop_cntrfctl, market_size_cntrfctl, c_u_cntrfctl, c_R_cntrfctl, R_0, p_0, symmetric=True, print_msg=print_msg, impute_MVNO={'impute': False}, q_0=None, eps_R=0.01, eps_p=0.01, factor=100.)
+            R_star, p_star, q_star, success = ie.infrastructure_eqm(bw_cntrfctl, gamma_cntrfctl, ds_cntrfctl_, xis_cntrfctl, theta_sigma, pop_cntrfctl, market_size_cntrfctl, c_u_cntrfctl, c_R_cntrfctl, R_0, p_0, symmetric=True, print_msg=print_msg, impute_MVNO={'impute': False}, q_0=None, eps_R=0.001, eps_p=0.001, factor=100., areatype=areatype)
             
             # Update Demand System
             ds_cntrfctl_.data[:,:,pidx] = np.copy(p_star)
@@ -457,12 +477,12 @@ def compute_equilibria(theta_n, p_starting_vals=None, R_starting_vals=None):
 
             cc_cntrfctl = np.zeros((R_star.shape[0], 1))
             for m in range(R_star.shape[0]):
-                cc_cntrfctl[m,0] = infr.rho_C_hex(bw_cntrfctl[m,0], R_star[m,0], gamma_cntrfctl[m])
+                cc_cntrfctl[m,0] = infr.rho_C_hex(bw_cntrfctl[m,0], R_star[m,0], gamma_cntrfctl[m], areatype=areatype)
             ccs_ = cc_cntrfctl[0,0]
             ccs_per_bw_ = (cc_cntrfctl / bw_cntrfctl)[0,0]
-            avg_path_losses_ = infr.avg_path_loss(R_stars_)
+            avg_path_losses_ = infr.avg_path_loss(R_stars_, areatype=areatype)
             num_stations_cntrfctl = infr.num_stations(np.array([[R_stars_]]), market_size_cntrfctl)
-            avg_SINR_ = infr.avg_SINR(R_stars_)
+            avg_SINR_ = infr.avg_SINR(R_stars_, areatype=areatype)
             
             return success, cs_by_type_, cs_, ps_, ts_, p_stars_, R_stars_, num_stations_stars_, num_stations_per_firm_stars_, q_stars_, ccs_, ccs_per_bw_, avg_path_losses_, avg_SINR_, cc_cntrfctl, num_stations_cntrfctl, ds_cntrfctl_
 
@@ -478,8 +498,8 @@ def compute_equilibria(theta_n, p_starting_vals=None, R_starting_vals=None):
 
             # Calculate elasticities
             start = time.time()
-            full_elasts[i,:] = pe.price_elast(np.copy(p_stars[i,:]), cc_cntrfctl, ds_cntrfctl_baseline, xis_cntrfctl, theta_sigma, num_stations_cntrfctl, pop_cntrfctl, symmetric=True, impute_MVNO={'impute': False}, q_0=None, eps=0.01, full=True)
-            partial_elasts[i,:] = pe.price_elast(np.copy(p_stars[i,:]), cc_cntrfctl, ds_cntrfctl_baseline, xis_cntrfctl, theta_sigma, num_stations_cntrfctl, pop_cntrfctl, symmetric=True, impute_MVNO={'impute': False}, q_0=None, eps=0.01, full=False)
+            full_elasts[i,:] = pe.price_elast(np.copy(p_stars[i,:]), cc_cntrfctl, ds_cntrfctl_baseline, xis_cntrfctl, theta_sigma, num_stations_cntrfctl, pop_cntrfctl, symmetric=True, impute_MVNO={'impute': False}, q_0=None, eps=0.001, full=True)
+            partial_elasts[i,:] = pe.price_elast(np.copy(p_stars[i,:]), cc_cntrfctl, ds_cntrfctl_baseline, xis_cntrfctl, theta_sigma, num_stations_cntrfctl, pop_cntrfctl, symmetric=True, impute_MVNO={'impute': False}, q_0=None, eps=0.001, full=False)
             if print_updates:
                 print(f"theta_n={theta_n}, num_firms={num_firms}: Finished calculating elasticities in {np.round(time.time() - start, 1)} seconds.", flush=True)
         
@@ -503,7 +523,7 @@ def compute_equilibria(theta_n, p_starting_vals=None, R_starting_vals=None):
                     R_0_dens = (1.0 / 3.0) * R_0_dens
                 if densities[j] / densities[0] < 0.5: # better starting guess
                     R_0_dens = 3.0 * R_0_dens
-                success, cs_by_type_, cs_, ps_, ts_, p_stars_, R_stars_, num_stations_stars_, num_stations_per_firm_stars_, q_stars_, ccs_, ccs_per_bw_, avg_path_losses_, avg_SINR_, cc_cntrfctl, num_stations_cntrfctl, ds_cntrfctl_ = simple_symmetric_eqm(bw_cntrfctl, gamma_cntrfctl, ds_cntrfctl, xis_cntrfctl, theta_sigma, pop_cntrfctl_dens, market_size_cntrfctl, c_u_cntrfctl, c_R_cntrfctl, R_0_dens, p_0_dens, num_firms, num_prods)
+                success, cs_by_type_, cs_, ps_, ts_, p_stars_, R_stars_, num_stations_stars_, num_stations_per_firm_stars_, q_stars_, ccs_, ccs_per_bw_, avg_path_losses_, avg_SINR_, cc_cntrfctl, num_stations_cntrfctl, ds_cntrfctl_ = simple_symmetric_eqm(bw_cntrfctl, gamma_cntrfctl, ds_cntrfctl, xis_cntrfctl, theta_sigma, pop_cntrfctl_dens, market_size_cntrfctl, c_u_cntrfctl, c_R_cntrfctl, R_0_dens, p_0_dens, num_firms, num_prods, areatype=densities_areatype[j])
                 successful_dens[i,j], cs_by_type_dens[i,j,:], cs_dens[i,j], ps_dens[i,j], ts_dens[i,j] = success, cs_by_type_, cs_, ps_, ts_
                 if np.isin(num_firms, num_firms_array): # don't need to record these if gone beyond num_firms_array
                     p_stars_dens[i,j,:], R_stars_dens[i,j], num_stations_stars_dens[i,j], num_stations_per_firm_stars_dens[i,j], q_stars_dens[i,j], ccs_dens[i,j], ccs_per_bw_dens[i,j], avg_path_losses_dens[i,j], avg_SINR_dens[i,j] = p_stars_, R_stars_, num_stations_stars_, num_stations_per_firm_stars_, q_stars_, ccs_, ccs_per_bw_, avg_path_losses_, avg_SINR_
@@ -519,7 +539,7 @@ def compute_equilibria(theta_n, p_starting_vals=None, R_starting_vals=None):
                 R_0_dens_1p = (1.0 / 3.0) * R_0_dens_1p
             if densities[j] / densities[0] < 0.5: # better starting guess
                 R_0_dens_1p = 3.0 * R_0_dens_1p
-            success, cs_by_type_, cs_, ps_, ts_, p_stars_, R_stars_, num_stations_stars_, num_stations_per_firm_stars_, q_stars_, ccs_, ccs_per_bw_, avg_path_losses_, avg_SINR_, cc_cntrfctl, num_stations_cntrfctl, ds_cntrfctl_ = simple_symmetric_eqm(bw_cntrfctl, gamma_cntrfctl, ds_cntrfctl_1p, xis_cntrfctl_1p, theta_sigma, pop_cntrfctl_dens, market_size_cntrfctl, c_u_cntrfctl_1p, c_R_cntrfctl, R_0_dens_1p, p_0_dens_1p, num_firms, 1)
+            success, cs_by_type_, cs_, ps_, ts_, p_stars_, R_stars_, num_stations_stars_, num_stations_per_firm_stars_, q_stars_, ccs_, ccs_per_bw_, avg_path_losses_, avg_SINR_, cc_cntrfctl, num_stations_cntrfctl, ds_cntrfctl_ = simple_symmetric_eqm(bw_cntrfctl, gamma_cntrfctl, ds_cntrfctl_1p, xis_cntrfctl_1p, theta_sigma, pop_cntrfctl_dens, market_size_cntrfctl, c_u_cntrfctl_1p, c_R_cntrfctl, R_0_dens_1p, p_0_dens_1p, num_firms, 1, areatype=densities_areatype[j])
             if print_updates:
                 print(f"theta_n={theta_n}, num_firms={num_firms}, density={j}: Finished calculating 1-product symmetric density equilibrium in {np.round(time.time() - start, 1)} seconds.", flush=True)
             successful_dens_1p[i,j], cs_by_type_dens_1p[i,j,:], cs_dens_1p[i,j], ps_dens_1p[i,j], ts_dens_1p[i,j] = success, cs_by_type_, cs_, ps_, ts_
@@ -557,21 +577,25 @@ def compute_equilibria(theta_n, p_starting_vals=None, R_starting_vals=None):
 
         # using all fixed costs
         start = time.time()
-        Pif_bf, Pif_b, CS_b, success = ie.bw_foc(bw_cntrfctl, gamma_cntrfctl, ds_cntrfctl_baseline, xis_cntrfctl, theta_sigma, pop_cntrfctl, market_size_cntrfctl, c_u_cntrfctl, c_R_cntrfctl, np.array([[R_stars[i]]]), p_stars[i,:], symmetric=True, print_msg=print_msg, impute_MVNO={'impute': False}, q_0=None, eps_R=0.01, eps_p=0.01, eps_bw=0.01, factor=100., include_logit_shock=include_logit_shock, adjust_c_R=False)
+        Pif_bf, Piotherf_bf, Pif_b, CS_b, success = ie.bw_foc(bw_cntrfctl, gamma_cntrfctl, ds_cntrfctl_baseline, xis_cntrfctl, theta_sigma, pop_cntrfctl, market_size_cntrfctl, c_u_cntrfctl, c_R_cntrfctl, np.array([[R_stars[i]]]), p_stars[i,:], symmetric=True, print_msg=print_msg, impute_MVNO={'impute': False}, q_0=None, eps_R=0.001, eps_p=0.001, eps_bw=0.01, factor=100., include_logit_shock=include_logit_shock, adjust_c_R=False)
         if print_updates:
             print(f"theta_n={theta_n}, num_firms={num_firms}: Finished calculating bandwidth derivatives (all fixed cost specification) in {np.round(time.time() - start, 1)} seconds.", flush=True)
         successful_bw_deriv_allfixed[i] = success
         partial_Pif_partial_bf_allfixed[i] = Pif_bf[0,0]
+        partial_Piotherf_partial_bf_allfixed[i] = Piotherf_bf[0,0]
+        partial_diffPif_partial_bf_allfixed[i] = Pif_bf[0,0] - Piotherf_bf[0,0]
         partial_Pif_partial_b_allfixed[i] = Pif_b[0,0]
         partial_CS_partial_b_allfixed[i] = CS_b[0]
 
         # using all scaled with bw
         start = time.time()
-        Pif_bf, Pif_b, CS_b, success = ie.bw_foc(bw_cntrfctl, gamma_cntrfctl, ds_cntrfctl_baseline, xis_cntrfctl, theta_sigma, pop_cntrfctl, market_size_cntrfctl, c_u_cntrfctl, c_R_cntrfctl, np.array([[R_stars[i]]]), p_stars[i,:], symmetric=True, print_msg=print_msg, impute_MVNO={'impute': False}, q_0=None, eps_R=0.01, eps_p=0.01, eps_bw=0.01, factor=100., include_logit_shock=include_logit_shock, adjust_c_R=True)
+        Pif_bf, Piotherf_bf, Pif_b, CS_b, success = ie.bw_foc(bw_cntrfctl, gamma_cntrfctl, ds_cntrfctl_baseline, xis_cntrfctl, theta_sigma, pop_cntrfctl, market_size_cntrfctl, c_u_cntrfctl, c_R_cntrfctl, np.array([[R_stars[i]]]), p_stars[i,:], symmetric=True, print_msg=print_msg, impute_MVNO={'impute': False}, q_0=None, eps_R=0.001, eps_p=0.001, eps_bw=0.01, factor=100., include_logit_shock=include_logit_shock, adjust_c_R=True)
         if print_updates:
             print(f"theta_n={theta_n}, num_firms={num_firms}: Finished calculating bandwidth derivatives (all bw cost specification) in {np.round(time.time() - start, 1)} seconds.", flush=True)
         successful_bw_deriv_allbw[i] = success
         partial_Pif_partial_bf_allbw[i] = Pif_bf[0,0]
+        partial_Piotherf_partial_bf_allbw[i] = Piotherf_bf[0,0]
+        partial_diffPif_partial_bf_allbw[i] = Pif_bf[0,0] - Piotherf_bf[0,0]
         partial_Pif_partial_b_allbw[i] = Pif_b[0,0]
         partial_CS_partial_b_allbw[i] = CS_b[0]
         
@@ -581,7 +605,7 @@ def compute_equilibria(theta_n, p_starting_vals=None, R_starting_vals=None):
             start = time.time()
             R_impute = R_stars[num_firms_array_extend_idx_4[0]] * np.ones((1,1)) # this is the R* from the 4-firm version
             ds_cntrfctl_shortrun = copy.deepcopy(ds_cntrfctl)
-            R_star, p_star, q_star, success = ie.infrastructure_eqm(bw_cntrfctl, gamma_cntrfctl, ds_cntrfctl_shortrun, xis_cntrfctl, theta_sigma, pop_cntrfctl, market_size_cntrfctl, c_u_cntrfctl, c_R_cntrfctl, R_impute, p_0, symmetric=True, print_msg=print_msg, impute_MVNO={'impute': False}, q_0=None, eps_R=0.01, eps_p=0.01, factor=100., R_fixed=True)
+            R_star, p_star, q_star, success = ie.infrastructure_eqm(bw_cntrfctl, gamma_cntrfctl, ds_cntrfctl_shortrun, xis_cntrfctl, theta_sigma, pop_cntrfctl, market_size_cntrfctl, c_u_cntrfctl, c_R_cntrfctl, R_impute, p_0, symmetric=True, print_msg=print_msg, impute_MVNO={'impute': False}, q_0=None, eps_R=0.001, eps_p=0.001, factor=100., R_fixed=True)
             if print_updates:
                 print(f"theta_n={theta_n}, num_firms={num_firms}: Finished calculating short-run equilibrium in {np.round(time.time() - start, 1)} seconds.", flush=True)
 
@@ -616,7 +640,7 @@ def compute_equilibria(theta_n, p_starting_vals=None, R_starting_vals=None):
             # using all fixed costs
             start = time.time()
             ds_cntrfctl_free_allfixed = copy.deepcopy(ds_cntrfctl)
-            R_star, p_star, q_star, success = ie.infrastructure_eqm(bw_cntrfctl, gamma_cntrfctl, ds_cntrfctl_free_allfixed, xis_cntrfctl, theta_sigma, pop_cntrfctl, market_size_cntrfctl, c_u_cntrfctl, c_R_cntrfctl, R_0, p_0, symmetric=True, print_msg=print_msg, impute_MVNO={'impute': False}, q_0=None, eps_R=0.01, eps_p=0.01, factor=100.)
+            R_star, p_star, q_star, success = ie.infrastructure_eqm(bw_cntrfctl, gamma_cntrfctl, ds_cntrfctl_free_allfixed, xis_cntrfctl, theta_sigma, pop_cntrfctl, market_size_cntrfctl, c_u_cntrfctl, c_R_cntrfctl, R_0, p_0, symmetric=True, print_msg=print_msg, impute_MVNO={'impute': False}, q_0=None, eps_R=0.001, eps_p=0.001, factor=100.)
             if print_updates:
                 print(f"theta_n={theta_n}, num_firms={num_firms}: Finished \"add Free\" (all fixed cost specification) in {np.round(time.time() - start, 1)} seconds.", flush=True)
 
@@ -647,7 +671,7 @@ def compute_equilibria(theta_n, p_starting_vals=None, R_starting_vals=None):
             start = time.time()
             ds_cntrfctl_free_allbw = copy.deepcopy(ds_cntrfctl)
             c_R_cntrfctl = np.ones((1,1)) * per_base_station_per_bw_cost * bw_cntrfctl
-            R_star, p_star, q_star, success = ie.infrastructure_eqm(bw_cntrfctl, gamma_cntrfctl, ds_cntrfctl_free_allbw, xis_cntrfctl, theta_sigma, pop_cntrfctl, market_size_cntrfctl, c_u_cntrfctl, c_R_cntrfctl, R_0, p_0, symmetric=True, print_msg=print_msg, impute_MVNO={'impute': False}, q_0=None, eps_R=0.01, eps_p=0.01, factor=100.)
+            R_star, p_star, q_star, success = ie.infrastructure_eqm(bw_cntrfctl, gamma_cntrfctl, ds_cntrfctl_free_allbw, xis_cntrfctl, theta_sigma, pop_cntrfctl, market_size_cntrfctl, c_u_cntrfctl, c_R_cntrfctl, R_0, p_0, symmetric=True, print_msg=print_msg, impute_MVNO={'impute': False}, q_0=None, eps_R=0.001, eps_p=0.001, factor=100.)
             if print_updates:
                 print(f"theta_n={theta_n}, num_firms={num_firms}: Finished \"add Free\" (all bw cost specification) in {np.round(time.time() - start, 1)} seconds.", flush=True)
 
@@ -759,8 +783,11 @@ def compute_equilibria(theta_n, p_starting_vals=None, R_starting_vals=None):
     
     if print_updates:
         print(f"theta_n={theta_n} finished computation.", flush=True)
+        
+    # Return per unit of bandwidth estimates of c_R
+    c_R_per_unit_bw = c_R / bw_4g_equiv
 
-    return p_stars, R_stars, num_stations_stars, num_stations_per_firm_stars, q_stars, cs_by_type, cs, ps, ts, ccs, ccs_per_bw, avg_path_losses, avg_SINR, full_elasts, partial_elasts, partial_Pif_partial_bf_allfixed, partial_Pif_partial_b_allfixed, partial_CS_partial_b_allfixed, partial_Pif_partial_bf_allbw, partial_Pif_partial_b_allbw, partial_CS_partial_b_allbw, c_u, c_R, p_stars_shortrun, R_stars_shortrun, num_stations_stars_shortrun, num_stations_per_firm_stars_shortrun, q_stars_shortrun, cs_by_type_shortrun, cs_shortrun, ps_shortrun, ts_shortrun, ccs_shortrun, ccs_per_bw_shortrun, avg_path_losses_shortrun, p_stars_free_allfixed, R_stars_free_allfixed, num_stations_stars_free_allfixed, num_stations_per_firm_stars_free_allfixed, q_stars_free_allfixed, cs_by_type_free_allfixed, cs_free_allfixed, ps_free_allfixed, ts_free_allfixed, ccs_free_allfixed, ccs_per_bw_free_allfixed, avg_path_losses_free_allfixed, p_stars_free_allbw, R_stars_free_allbw, num_stations_stars_free_allbw, num_stations_per_firm_stars_free_allbw, q_stars_free_allbw, cs_by_type_free_allbw, cs_free_allbw, ps_free_allbw, ts_free_allbw, ccs_free_allbw, ccs_per_bw_free_allbw, avg_path_losses_free_allbw, p_stars_dens, R_stars_dens, num_stations_stars_dens, num_stations_per_firm_stars_dens, q_stars_dens, cs_dens, cs_by_type_dens, ps_dens, ts_dens, ccs_dens, ccs_per_bw_dens, avg_path_losses_dens, avg_SINR_dens, p_stars_bw, R_stars_bw, num_stations_stars_bw, num_stations_per_firm_stars_bw, q_stars_bw, cs_bw, cs_by_type_bw, ps_bw, ts_bw, ccs_bw, ccs_per_bw_bw, avg_path_losses_bw, avg_SINR_bw, p_stars_dens_1p, R_stars_dens_1p, num_stations_stars_dens_1p, num_stations_per_firm_stars_dens_1p, q_stars_dens_1p, cs_dens_1p, cs_by_type_dens_1p, ps_dens_1p, ts_dens_1p, ccs_dens_1p, ccs_per_bw_dens_1p, avg_path_losses_dens_1p, avg_SINR_dens_1p, successful, successful_bw_deriv_allfixed, successful_bw_deriv_allbw, successful_shortrun, successful_free_allfixed, successful_free_allbw, successful_dens, successful_bw, successful_dens_1p, per_user_costs
+    return p_stars, R_stars, num_stations_stars, num_stations_per_firm_stars, q_stars, cs_by_type, cs, ps, ts, ccs, ccs_per_bw, avg_path_losses, avg_SINR, full_elasts, partial_elasts, partial_Pif_partial_bf_allfixed, partial_Piotherf_partial_bf_allfixed, partial_diffPif_partial_bf_allfixed, partial_Pif_partial_b_allfixed, partial_CS_partial_b_allfixed, partial_Pif_partial_bf_allbw, partial_Piotherf_partial_bf_allbw, partial_diffPif_partial_bf_allbw, partial_Pif_partial_b_allbw, partial_CS_partial_b_allbw, c_u, c_R_per_unit_bw, p_stars_shortrun, R_stars_shortrun, num_stations_stars_shortrun, num_stations_per_firm_stars_shortrun, q_stars_shortrun, cs_by_type_shortrun, cs_shortrun, ps_shortrun, ts_shortrun, ccs_shortrun, ccs_per_bw_shortrun, avg_path_losses_shortrun, p_stars_free_allfixed, R_stars_free_allfixed, num_stations_stars_free_allfixed, num_stations_per_firm_stars_free_allfixed, q_stars_free_allfixed, cs_by_type_free_allfixed, cs_free_allfixed, ps_free_allfixed, ts_free_allfixed, ccs_free_allfixed, ccs_per_bw_free_allfixed, avg_path_losses_free_allfixed, p_stars_free_allbw, R_stars_free_allbw, num_stations_stars_free_allbw, num_stations_per_firm_stars_free_allbw, q_stars_free_allbw, cs_by_type_free_allbw, cs_free_allbw, ps_free_allbw, ts_free_allbw, ccs_free_allbw, ccs_per_bw_free_allbw, avg_path_losses_free_allbw, p_stars_dens, R_stars_dens, num_stations_stars_dens, num_stations_per_firm_stars_dens, q_stars_dens, cs_dens, cs_by_type_dens, ps_dens, ts_dens, ccs_dens, ccs_per_bw_dens, avg_path_losses_dens, avg_SINR_dens, p_stars_bw, R_stars_bw, num_stations_stars_bw, num_stations_per_firm_stars_bw, q_stars_bw, cs_bw, cs_by_type_bw, ps_bw, ts_bw, ccs_bw, ccs_per_bw_bw, avg_path_losses_bw, avg_SINR_bw, p_stars_dens_1p, R_stars_dens_1p, num_stations_stars_dens_1p, num_stations_per_firm_stars_dens_1p, q_stars_dens_1p, cs_dens_1p, cs_by_type_dens_1p, ps_dens_1p, ts_dens_1p, ccs_dens_1p, ccs_per_bw_dens_1p, avg_path_losses_dens_1p, avg_SINR_dens_1p, successful, successful_bw_deriv_allfixed, successful_bw_deriv_allbw, successful_shortrun, successful_free_allfixed, successful_free_allbw, successful_dens, successful_bw, successful_dens_1p, per_user_costs
     
 # %%
 # Compute the equilibria and perturbations
@@ -788,9 +815,13 @@ full_elasts = np.zeros((theta_N, num_firms_array.shape[0], num_prods))
 partial_elasts = np.zeros((theta_N, num_firms_array.shape[0], num_prods))
 
 partial_Pif_partial_bf_allfixed = np.zeros((theta_N, num_firms_array.shape[0]))
+partial_Piotherf_partial_bf_allfixed = np.zeros((theta_N, num_firms_array.shape[0]))
+partial_diffPif_partial_bf_allfixed = np.zeros((theta_N, num_firms_array.shape[0]))
 partial_Pif_partial_b_allfixed = np.zeros((theta_N, num_firms_array.shape[0]))
 partial_CS_partial_b_allfixed = np.zeros((theta_N, num_firms_array.shape[0]))
 partial_Pif_partial_bf_allbw = np.zeros((theta_N, num_firms_array.shape[0]))
+partial_Piotherf_partial_bf_allbw = np.zeros((theta_N, num_firms_array.shape[0]))
+partial_diffPif_partial_bf_allbw = np.zeros((theta_N, num_firms_array.shape[0]))
 partial_Pif_partial_b_allbw = np.zeros((theta_N, num_firms_array.shape[0]))
 partial_CS_partial_b_allbw = np.zeros((theta_N, num_firms_array.shape[0]))
 
@@ -920,116 +951,124 @@ for ind, res in enumerate(pool.imap(compute_equilibria_adjust, range(theta_N)), 
     full_elasts[idx,:,:] = res[13]
     partial_elasts[idx,:,:] = res[14]
     partial_Pif_partial_bf_allfixed[idx,:] = res[15]
-    partial_Pif_partial_b_allfixed[idx,:] = res[16]
-    partial_CS_partial_b_allfixed[idx,:] = res[17]
-    partial_Pif_partial_bf_allbw[idx,:] = res[18]
-    partial_Pif_partial_b_allbw[idx,:] = res[19]
-    partial_CS_partial_b_allbw[idx,:] = res[20]
-    c_u[idx,:] = res[21]
-    c_R[idx,:,:] = res[22]
-    p_stars_shortrun[idx,:,:] = res[23]
-    R_stars_shortrun[idx,:] = res[24]
-    num_stations_stars_shortrun[idx,:] = res[25]
-    num_stations_per_firm_stars_shortrun[idx,:] = res[26]
-    q_stars_shortrun[idx,:] = res[27]
-    cs_by_type_shortrun[idx,:,:] = res[28]
-    cs_shortrun[idx,:] = res[29]
-    ps_shortrun[idx,:] = res[30]
-    ts_shortrun[idx,:] = res[31]
-    ccs_shortrun[idx,:] = res[32]
-    ccs_per_bw_shortrun[idx,:] = res[33]
-    avg_path_losses_shortrun[idx,:] = res[34]
-    p_stars_free_allfixed[idx,:,:] = res[35]
-    R_stars_free_allfixed[idx,:] = res[36]
-    num_stations_stars_free_allfixed[idx,:] = res[37]
-    num_stations_per_firm_stars_free_allfixed[idx,:] = res[38]
-    q_stars_free_allfixed[idx,:] = res[39]
-    cs_by_type_free_allfixed[idx,:,:] = res[40]
-    cs_free_allfixed[idx,:] = res[41]
-    ps_free_allfixed[idx,:] = res[42]
-    ts_free_allfixed[idx,:] = res[43]
-    ccs_free_allfixed[idx,:] = res[44]
-    ccs_per_bw_free_allfixed[idx,:] = res[45]
-    avg_path_losses_free_allfixed[idx,:] = res[46]
-    p_stars_free_allbw[idx,:,:] = res[47]
-    R_stars_free_allbw[idx,:] = res[48]
-    num_stations_stars_free_allbw[idx,:] = res[49]
-    num_stations_per_firm_stars_free_allbw[idx,:] = res[50]
-    q_stars_free_allbw[idx,:] = res[51]
-    cs_by_type_free_allbw[idx,:,:] = res[52]
-    cs_free_allbw[idx,:] = res[53]
-    ps_free_allbw[idx,:] = res[54]
-    ts_free_allbw[idx,:] = res[55]
-    ccs_free_allbw[idx,:] = res[56]
-    ccs_per_bw_free_allbw[idx,:] = res[57]
-    avg_path_losses_free_allbw[idx,:] = res[58]
+    partial_Piotherf_partial_bf_allfixed[idx,:] = res[16]
+    partial_diffPif_partial_bf_allfixed[idx,:] = res[17]
+    partial_Pif_partial_b_allfixed[idx,:] = res[18]
+    partial_CS_partial_b_allfixed[idx,:] = res[19]
+    partial_Pif_partial_bf_allbw[idx,:] = res[20]
+    partial_Piotherf_partial_bf_allbw[idx,:] = res[21]
+    partial_diffPif_partial_bf_allbw[idx,:] = res[22]
+    partial_Pif_partial_b_allbw[idx,:] = res[23]
+    partial_CS_partial_b_allbw[idx,:] = res[24]
+    c_u[idx,:] = res[25]
+    c_R[idx,:,:] = res[26]
+    p_stars_shortrun[idx,:,:] = res[27]
+    R_stars_shortrun[idx,:] = res[28]
+    num_stations_stars_shortrun[idx,:] = res[29]
+    num_stations_per_firm_stars_shortrun[idx,:] = res[30]
+    q_stars_shortrun[idx,:] = res[31]
+    cs_by_type_shortrun[idx,:,:] = res[32]
+    cs_shortrun[idx,:] = res[33]
+    ps_shortrun[idx,:] = res[34]
+    ts_shortrun[idx,:] = res[35]
+    ccs_shortrun[idx,:] = res[36]
+    ccs_per_bw_shortrun[idx,:] = res[37]
+    avg_path_losses_shortrun[idx,:] = res[38]
+    p_stars_free_allfixed[idx,:,:] = res[39]
+    R_stars_free_allfixed[idx,:] = res[40]
+    num_stations_stars_free_allfixed[idx,:] = res[41]
+    num_stations_per_firm_stars_free_allfixed[idx,:] = res[42]
+    q_stars_free_allfixed[idx,:] = res[43]
+    cs_by_type_free_allfixed[idx,:,:] = res[44]
+    cs_free_allfixed[idx,:] = res[45]
+    ps_free_allfixed[idx,:] = res[46]
+    ts_free_allfixed[idx,:] = res[47]
+    ccs_free_allfixed[idx,:] = res[48]
+    ccs_per_bw_free_allfixed[idx,:] = res[49]
+    avg_path_losses_free_allfixed[idx,:] = res[50]
+    p_stars_free_allbw[idx,:,:] = res[51]
+    R_stars_free_allbw[idx,:] = res[52]
+    num_stations_stars_free_allbw[idx,:] = res[53]
+    num_stations_per_firm_stars_free_allbw[idx,:] = res[54]
+    q_stars_free_allbw[idx,:] = res[55]
+    cs_by_type_free_allbw[idx,:,:] = res[56]
+    cs_free_allbw[idx,:] = res[57]
+    ps_free_allbw[idx,:] = res[58]
+    ts_free_allbw[idx,:] = res[59]
+    ccs_free_allbw[idx,:] = res[60]
+    ccs_per_bw_free_allbw[idx,:] = res[61]
+    avg_path_losses_free_allbw[idx,:] = res[62]
 
-    p_stars_dens[idx,:,:,:] = res[59]
-    R_stars_dens[idx,:,:] = res[60]
-    num_stations_stars_dens[idx,:,:] = res[61]
-    num_stations_per_firm_stars_dens[idx,:,:] = res[62]
-    q_stars_dens[idx,:,:] = res[63]
-    cs_dens[idx,:,:] = res[64]
-    cs_by_type_dens[idx,:,:,:] = res[65]
-    ps_dens[idx,:,:] = res[66]
-    ts_dens[idx,:,:] = res[67]
-    ccs_dens[idx,:,:] = res[68]
-    ccs_per_bw_dens[idx,:,:] = res[69]
-    avg_path_losses_dens[idx,:,:] = res[70]
-    avg_SINR_dens[idx,:,:] = res[71]
+    p_stars_dens[idx,:,:,:] = res[63]
+    R_stars_dens[idx,:,:] = res[64]
+    num_stations_stars_dens[idx,:,:] = res[65]
+    num_stations_per_firm_stars_dens[idx,:,:] = res[66]
+    q_stars_dens[idx,:,:] = res[67]
+    cs_dens[idx,:,:] = res[68]
+    cs_by_type_dens[idx,:,:,:] = res[69]
+    ps_dens[idx,:,:] = res[70]
+    ts_dens[idx,:,:] = res[71]
+    ccs_dens[idx,:,:] = res[72]
+    ccs_per_bw_dens[idx,:,:] = res[73]
+    avg_path_losses_dens[idx,:,:] = res[74]
+    avg_SINR_dens[idx,:,:] = res[75]
 
-    p_stars_bw[idx,:,:,:] = res[72]
-    R_stars_bw[idx,:,:] = res[73]
-    num_stations_stars_bw[idx,:,:] = res[74]
-    num_stations_per_firm_stars_bw[idx,:,:] = res[75]
-    q_stars_bw[idx,:,:] = res[76]
-    cs_bw[idx,:,:] = res[77]
-    cs_by_type_bw[idx,:,:,:] = res[78]
-    ps_bw[idx,:,:] = res[79]
-    ts_bw[idx,:,:] = res[80]
-    ccs_bw[idx,:,:] = res[81]
-    ccs_per_bw_bw[idx,:,:] = res[82]
-    avg_path_losses_bw[idx,:,:] = res[83]
-    avg_SINR_bw[idx,:,:] = res[84]
+    p_stars_bw[idx,:,:,:] = res[76]
+    R_stars_bw[idx,:,:] = res[77]
+    num_stations_stars_bw[idx,:,:] = res[78]
+    num_stations_per_firm_stars_bw[idx,:,:] = res[79]
+    q_stars_bw[idx,:,:] = res[80]
+    cs_bw[idx,:,:] = res[81]
+    cs_by_type_bw[idx,:,:,:] = res[82]
+    ps_bw[idx,:,:] = res[83]
+    ts_bw[idx,:,:] = res[84]
+    ccs_bw[idx,:,:] = res[85]
+    ccs_per_bw_bw[idx,:,:] = res[86]
+    avg_path_losses_bw[idx,:,:] = res[87]
+    avg_SINR_bw[idx,:,:] = res[88]
     
-    p_stars_dens_1p[idx,:,:,:] = res[85]
-    R_stars_dens_1p[idx,:,:] = res[86]
-    num_stations_stars_dens_1p[idx,:,:] = res[87]
-    num_stations_per_firm_stars_dens_1p[idx,:,:] = res[88]
-    q_stars_dens_1p[idx,:,:] = res[89]
-    cs_dens_1p[idx,:,:] = res[90]
-    cs_by_type_dens_1p[idx,:,:,:] = res[91]
-    ps_dens_1p[idx,:,:] = res[92]
-    ts_dens_1p[idx,:,:] = res[93]
-    ccs_dens_1p[idx,:,:] = res[94]
-    ccs_per_bw_dens_1p[idx,:,:] = res[95]
-    avg_path_losses_dens_1p[idx,:,:] = res[96]
-    avg_SINR_dens_1p[idx,:,:] = res[97]
+    p_stars_dens_1p[idx,:,:,:] = res[89]
+    R_stars_dens_1p[idx,:,:] = res[90]
+    num_stations_stars_dens_1p[idx,:,:] = res[91]
+    num_stations_per_firm_stars_dens_1p[idx,:,:] = res[92]
+    q_stars_dens_1p[idx,:,:] = res[93]
+    cs_dens_1p[idx,:,:] = res[94]
+    cs_by_type_dens_1p[idx,:,:,:] = res[95]
+    ps_dens_1p[idx,:,:] = res[96]
+    ts_dens_1p[idx,:,:] = res[97]
+    ccs_dens_1p[idx,:,:] = res[98]
+    ccs_per_bw_dens_1p[idx,:,:] = res[99]
+    avg_path_losses_dens_1p[idx,:,:] = res[100]
+    avg_SINR_dens_1p[idx,:,:] = res[101]
 
-    successful_extend[idx,:] = res[98]
-    successful_bw_deriv_allfixed[idx,:] = res[99]
-    successful_bw_deriv_allbw[idx,:] = res[100]
-    successful_shortrun[idx,:] = res[101]
-    successful_free_allfixed[idx,:] = res[102]
-    successful_free_allbw[idx,:] = res[103]
-    successful_dens[idx,:,:] = res[104]
-    successful_bw[idx,:,:] = res[105]
-    successful_dens_1p[idx,:,:] = res[106]
+    successful_extend[idx,:] = res[102]
+    successful_bw_deriv_allfixed[idx,:] = res[103]
+    successful_bw_deriv_allbw[idx,:] = res[104]
+    successful_shortrun[idx,:] = res[105]
+    successful_free_allfixed[idx,:] = res[106]
+    successful_free_allbw[idx,:] = res[107]
+    successful_dens[idx,:,:] = res[108]
+    successful_bw[idx,:,:] = res[109]
+    successful_dens_1p[idx,:,:] = res[110]
     
-    per_user_costs[idx,:] = res[107]
+    per_user_costs[idx,:] = res[111]
     
 pool.close()
 
 # %%
 # Save arrays before processing
 if save_bf:
-    np.savez_compressed(f"{paths.arrays_path}all_arrays_e{elast_id}_n{nest_id}.npz", p_stars, R_stars, num_stations_stars, num_stations_per_firm_stars, q_stars, cs_by_type, cs, ps, ts, ccs, avg_path_losses, avg_SINR, full_elasts, partial_elasts, partial_Pif_partial_bf_allfixed, partial_Pif_partial_b_allfixed, partial_CS_partial_b_allfixed, partial_Pif_partial_bf_allbw, partial_Pif_partial_b_allbw, partial_CS_partial_b_allbw, c_u, c_R, p_stars_shortrun, R_stars_shortrun, num_stations_stars_shortrun, num_stations_per_firm_stars_shortrun, q_stars_shortrun, cs_by_type_shortrun, cs_shortrun, ps_shortrun, ts_shortrun, ccs_shortrun, avg_path_losses_shortrun, p_stars_free_allfixed, R_stars_free_allfixed, num_stations_stars_free_allfixed, num_stations_per_firm_stars_free_allfixed, q_stars_free_allfixed, cs_by_type_free_allfixed, cs_free_allfixed, ps_free_allfixed, ts_free_allfixed, ccs_free_allfixed, avg_path_losses_free_allfixed, p_stars_free_allbw, R_stars_free_allbw, num_stations_stars_free_allbw, num_stations_per_firm_stars_free_allbw, q_stars_free_allbw, cs_by_type_free_allbw, cs_free_allbw, ps_free_allbw, ts_free_allbw, ccs_free_allbw, avg_path_losses_free_allbw, p_stars_dens, R_stars_dens, num_stations_stars_dens, num_stations_per_firm_stars_dens, q_stars_dens, cs_dens, cs_by_type_dens, ps_dens, ts_dens, ccs_dens, avg_path_losses_dens, avg_SINR_dens, p_stars_bw, R_stars_bw, num_stations_stars_bw, num_stations_per_firm_stars_bw, q_stars_bw, cs_bw, cs_by_type_bw, ps_bw, ts_bw, ccs_bw, avg_path_losses_bw, avg_SINR_bw, p_stars_dens_1p, R_stars_dens_1p, num_stations_stars_dens_1p, num_stations_per_firm_stars_dens_1p, q_stars_dens_1p, cs_dens_1p, cs_by_type_dens_1p, ps_dens_1p, ts_dens_1p, ccs_dens_1p, avg_path_losses_dens_1p, avg_SINR_dens_1p, successful_extend, successful_bw_deriv_allfixed, successful_bw_deriv_allbw, successful_shortrun, successful_free_allfixed, successful_free_allbw, successful_dens, successful_bw, successful_dens_1p, per_user_costs)
+    np.savez_compressed(f"{paths.arrays_path}all_arrays_e{elast_id}_n{nest_id}.npz", p_stars, R_stars, num_stations_stars, num_stations_per_firm_stars, q_stars, cs_by_type, cs, ps, ts, ccs, ccs_per_bw, avg_path_losses, avg_SINR, full_elasts, partial_elasts, partial_Pif_partial_bf_allfixed, partial_Piotherf_partial_bf_allfixed, partial_diffPif_partial_bf_allfixed, partial_Pif_partial_b_allfixed, partial_CS_partial_b_allfixed, partial_Pif_partial_bf_allbw, partial_Piotherf_partial_bf_allbw, partial_diffPif_partial_bf_allbw, partial_Pif_partial_b_allbw, partial_CS_partial_b_allbw, c_u, c_R, p_stars_shortrun, R_stars_shortrun, num_stations_stars_shortrun, num_stations_per_firm_stars_shortrun, q_stars_shortrun, cs_by_type_shortrun, cs_shortrun, ps_shortrun, ts_shortrun, ccs_shortrun, ccs_per_bw_shortrun, avg_path_losses_shortrun, p_stars_free_allfixed, R_stars_free_allfixed, num_stations_stars_free_allfixed, num_stations_per_firm_stars_free_allfixed, q_stars_free_allfixed, cs_by_type_free_allfixed, cs_free_allfixed, ps_free_allfixed, ts_free_allfixed, ccs_free_allfixed, ccs_per_bw_free_allfixed, avg_path_losses_free_allfixed, p_stars_free_allbw, R_stars_free_allbw, num_stations_stars_free_allbw, num_stations_per_firm_stars_free_allbw, q_stars_free_allbw, cs_by_type_free_allbw, cs_free_allbw, ps_free_allbw, ts_free_allbw, ccs_free_allbw, ccs_per_bw_free_allbw, avg_path_losses_free_allbw, p_stars_dens, R_stars_dens, num_stations_stars_dens, num_stations_per_firm_stars_dens, q_stars_dens, cs_dens, cs_by_type_dens, ps_dens, ts_dens, ccs_dens, ccs_per_bw_dens, avg_path_losses_dens, avg_SINR_dens, p_stars_bw, R_stars_bw, num_stations_stars_bw, num_stations_per_firm_stars_bw, q_stars_bw, cs_bw, cs_by_type_bw, ps_bw, ts_bw, ccs_bw, ccs_per_bw_bw, avg_path_losses_bw, avg_SINR_bw, p_stars_dens_1p, R_stars_dens_1p, num_stations_stars_dens_1p, num_stations_per_firm_stars_dens_1p, q_stars_dens_1p, cs_dens_1p, cs_by_type_dens_1p, ps_dens_1p, ts_dens_1p, ccs_dens_1p, ccs_per_bw_dens_1p, avg_path_losses_dens_1p, avg_SINR_dens_1p, successful_extend, successful_bw_deriv_allfixed, successful_bw_deriv_allbw, successful_shortrun, successful_free_allfixed, successful_free_allbw, successful_dens, successful_bw, successful_dens_1p, per_user_costs)
 
 # %%
 # Determine point estimates and standard errors
 
-def asym_distribution(var, success):
+def asym_distribution(var_array, success_array):
     """Determine the point estimate and standard errors given demand parameter using the Delta Method."""
+    
+    # Copy arrays
+    var = np.copy(var_array)
+    success = np.copy(success_array)
     
     # Reshape if var and success if success has more than two dimensions (b/c code below written for two dimensions)
     var_shape = var.shape
@@ -1104,9 +1143,13 @@ avg_SINR, avg_SINR_se = asym_distribution(avg_SINR, successful)
 full_elasts, full_elasts_se = asym_distribution(full_elasts, successful)
 partial_elasts, partial_elasts_se = asym_distribution(partial_elasts, successful)
 partial_Pif_partial_bf_allfixed, partial_Pif_partial_bf_allfixed_se = asym_distribution(partial_Pif_partial_bf_allfixed, successful_bw_deriv_allfixed)
+partial_Piotherf_partial_bf_allfixed, partial_Piotherf_partial_bf_allfixed_se = asym_distribution(partial_Piotherf_partial_bf_allfixed, successful_bw_deriv_allfixed)
+partial_diffPif_partial_bf_allfixed, partial_diffPif_partial_bf_allfixed_se = asym_distribution(partial_diffPif_partial_bf_allfixed, successful_bw_deriv_allfixed)
 partial_Pif_partial_b_allfixed, partial_Pif_partial_b_allfixed_se = asym_distribution(partial_Pif_partial_b_allfixed, successful_bw_deriv_allfixed)
 partial_CS_partial_b_allfixed, partial_CS_partial_b_allfixed_se = asym_distribution(partial_CS_partial_b_allfixed, successful_bw_deriv_allfixed)
 partial_Pif_partial_bf_allbw, partial_Pif_partial_bf_allbw_se = asym_distribution(partial_Pif_partial_bf_allbw, successful_bw_deriv_allbw)
+partial_Piotherf_partial_bf_allbw, partial_Piotherf_partial_bf_allbw_se = asym_distribution(partial_Piotherf_partial_bf_allbw, successful_bw_deriv_allbw)
+partial_diffPif_partial_bf_allbw, partial_diffPif_partial_bf_allbw_se = asym_distribution(partial_diffPif_partial_bf_allbw, successful_bw_deriv_allbw)
 partial_Pif_partial_b_allbw, partial_Pif_partial_b_allbw_se = asym_distribution(partial_Pif_partial_b_allbw, successful_bw_deriv_allbw)
 partial_CS_partial_b_allbw, partial_CS_partial_b_allbw_se = asym_distribution(partial_CS_partial_b_allbw, successful_bw_deriv_allbw)
 c_u, c_u_se = asym_distribution(c_u, np.ones((c_u.shape[0], c_u.shape[1]), dtype=bool)) # all should be successful
@@ -1211,9 +1254,13 @@ np.save(f"{paths.arrays_path}avg_SINR_e{elast_id}_n{nest_id}.npy", avg_SINR)
 np.save(f"{paths.arrays_path}full_elasts_e{elast_id}_n{nest_id}.npy", full_elasts)
 np.save(f"{paths.arrays_path}partial_elasts_e{elast_id}_n{nest_id}.npy", partial_elasts)
 np.save(f"{paths.arrays_path}partial_Pif_partial_bf_allfixed_e{elast_id}_n{nest_id}.npy", partial_Pif_partial_bf_allfixed)
+np.save(f"{paths.arrays_path}partial_Piotherf_partial_bf_allfixed_e{elast_id}_n{nest_id}.npy", partial_Piotherf_partial_bf_allfixed)
+np.save(f"{paths.arrays_path}partial_diffPif_partial_bf_allfixed_e{elast_id}_n{nest_id}.npy", partial_diffPif_partial_bf_allfixed)
 np.save(f"{paths.arrays_path}partial_Pif_partial_b_allfixed_e{elast_id}_n{nest_id}.npy", partial_Pif_partial_b_allfixed)
 np.save(f"{paths.arrays_path}partial_CS_partial_b_allfixed_e{elast_id}_n{nest_id}.npy", partial_CS_partial_b_allfixed)
 np.save(f"{paths.arrays_path}partial_Pif_partial_bf_allbw_e{elast_id}_n{nest_id}.npy", partial_Pif_partial_bf_allbw)
+np.save(f"{paths.arrays_path}partial_Piotherf_partial_bf_allbw_e{elast_id}_n{nest_id}.npy", partial_Piotherf_partial_bf_allbw)
+np.save(f"{paths.arrays_path}partial_diffPif_partial_bf_allbw_e{elast_id}_n{nest_id}.npy", partial_diffPif_partial_bf_allbw)
 np.save(f"{paths.arrays_path}partial_Pif_partial_b_allbw_e{elast_id}_n{nest_id}.npy", partial_Pif_partial_b_allbw)
 np.save(f"{paths.arrays_path}partial_CS_partial_b_allbw_e{elast_id}_n{nest_id}.npy", partial_CS_partial_b_allbw)
 np.save(f"{paths.arrays_path}c_u_e{elast_id}_n{nest_id}.npy", c_u)
@@ -1313,11 +1360,15 @@ if compute_std_errs:
     np.save(f"{paths.arrays_path}full_elasts_se_e{elast_id}_n{nest_id}.npy", full_elasts_se)
     np.save(f"{paths.arrays_path}partial_elasts_se_e{elast_id}_n{nest_id}.npy", partial_elasts_se)
     np.save(f"{paths.arrays_path}partial_Pif_partial_bf_allfixed_se_e{elast_id}_n{nest_id}.npy", partial_Pif_partial_bf_allfixed_se)
+    np.save(f"{paths.arrays_path}partial_Piotherf_partial_bf_allfixed_se_e{elast_id}_n{nest_id}.npy", partial_Piotherf_partial_bf_allfixed_se)
+    np.save(f"{paths.arrays_path}partial_diffPif_partial_bf_allfixed_se_e{elast_id}_n{nest_id}.npy", partial_diffPif_partial_bf_allfixed_se)
     np.save(f"{paths.arrays_path}partial_Pif_partial_b_allfixed_se_e{elast_id}_n{nest_id}.npy", partial_Pif_partial_b_allfixed_se)
-    np.save(f"{paths.arrays_path}partial_CS_partial_b_allbw_se_e{elast_id}_n{nest_id}.npy", partial_CS_partial_b_allbw_se)
-    np.save(f"{paths.arrays_path}partial_Pif_partial_bf_allbw_se_e{elast_id}_n{nest_id}.npy", partial_Pif_partial_bf_allbw_se)
-    np.save(f"{paths.arrays_path}partial_Pif_partial_b_allbw_se_e{elast_id}_n{nest_id}.npy", partial_Pif_partial_b_allbw_se)
     np.save(f"{paths.arrays_path}partial_CS_partial_b_allfixed_se_e{elast_id}_n{nest_id}.npy", partial_CS_partial_b_allfixed_se)
+    np.save(f"{paths.arrays_path}partial_Pif_partial_bf_allbw_se_e{elast_id}_n{nest_id}.npy", partial_Pif_partial_bf_allbw_se)
+    np.save(f"{paths.arrays_path}partial_Piotherf_partial_bf_allbw_se_e{elast_id}_n{nest_id}.npy", partial_Piotherf_partial_bf_allbw_se)
+    np.save(f"{paths.arrays_path}partial_diffPif_partial_bf_allbw_se_e{elast_id}_n{nest_id}.npy", partial_diffPif_partial_bf_allbw_se)
+    np.save(f"{paths.arrays_path}partial_Pif_partial_b_allbw_se_e{elast_id}_n{nest_id}.npy", partial_Pif_partial_b_allbw_se)
+    np.save(f"{paths.arrays_path}partial_CS_partial_b_allbw_se_e{elast_id}_n{nest_id}.npy", partial_CS_partial_b_allbw_se)
     np.save(f"{paths.arrays_path}c_u_se_e{elast_id}_n{nest_id}.npy", c_u_se)
     np.save(f"{paths.arrays_path}c_R_se_e{elast_id}_n{nest_id}.npy", c_R_se)
     np.save(f"{paths.arrays_path}p_stars_shortrun_se_e{elast_id}_n{nest_id}.npy", p_stars_shortrun_se)

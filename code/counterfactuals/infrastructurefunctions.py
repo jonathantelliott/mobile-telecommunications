@@ -12,7 +12,7 @@ JN_noise = -174. + 10. * np.log10(5.0e6) # Johnson-Nyquist noise per 5 MHz
 cell_utilization = 0.3 # from Blaszczyszyn et al., 2014
 
 # %%
-def hata_loss(radius, freq, height):
+def hata_loss_urban(radius, freq, height):
     """
         Return small city Hata loss function
     
@@ -35,7 +35,86 @@ def hata_loss(radius, freq, height):
 
     return path_loss
 
-def interfere_power(A, x, y, radius, freq, height):
+def hata_loss_suburban(radius, freq, height):
+    """
+        Return suburban Hata loss function
+    
+    Parameters
+    ----------
+        radius : float or ndarray
+            cell radius in km
+        freq : float 
+            frequency in MHz
+        height : float
+            antenna height in m
+
+    Returns
+    -------
+        path_loss: float
+            scalar of path loss
+    """
+
+    path_loss =  hata_loss_urban(radius, freq, height) - 2.0 * (np.log10(freq / 28.0))**2.0 - 5.4
+
+    return path_loss
+
+def hata_loss_rural(radius, freq, height):
+    """
+        Return rural Hata loss function
+    
+    Parameters
+    ----------
+        radius : float or ndarray
+            cell radius in km
+        freq : float 
+            frequency in MHz
+        height : float
+            antenna height in m
+
+    Returns
+    -------
+        path_loss: float
+            scalar of path loss
+    """
+
+    path_loss =  hata_loss_urban(radius, freq, height) - 4.78 * np.log10(freq)**2.0 + 18.33 * np.log10(freq) - 40.94
+
+    return path_loss
+
+def hata_loss(radius, freq, height, areatype="urban"):
+    """
+        Return small city Hata loss function
+    
+    Parameters
+    ----------
+        radius : float or ndarray
+            cell radius in km
+        freq : float 
+            frequency in MHz
+        height : float
+            antenna height in m
+        areatype : string
+            whether using urban, suburban, or rural Hata loss function
+
+    Returns
+    -------
+        path_loss: float
+            scalar of path loss
+    """
+    
+    path_loss = 0.0
+    if areatype == "urban":
+        path_loss = hata_loss_urban(radius, freq, height)
+    elif areatype == "suburban":
+        path_loss = hata_loss_suburban(radius, freq, height)
+    elif areatype == "rural":
+        path_loss = hata_loss_rural(radius, freq, height)
+    else:
+        raise ValueError("Value for areatype must be \"urban\", \"suburban\", or \"rural\".")
+
+    return path_loss
+
+def interfere_power(A, x, y, radius, freq, height, areatype="urban"):
     """
         Return interference from adjacent cells
     
@@ -53,6 +132,8 @@ def interfere_power(A, x, y, radius, freq, height):
             frequency in MHz
         height : float
             antenna height in m
+        areatype : string
+            whether using urban, suburban, or rural Hata loss function
 
     Returns
     -------
@@ -70,11 +151,11 @@ def interfere_power(A, x, y, radius, freq, height):
     
     # Determine interference power from the six adjacent cells
     radii = np.sqrt(x_coords**2. + y_coords**2.)
-    interference = A - hata_loss(radii, freq, height)
+    interference = A - hata_loss(radii, freq, height, areatype=areatype)
 
     return interference
 
-def SINR(A, x, y, radius, freq, height):
+def SINR(A, x, y, radius, freq, height, areatype="urban"):
     """
         Return signal-to-interference-and-noise ratio
     
@@ -92,6 +173,8 @@ def SINR(A, x, y, radius, freq, height):
             frequency, in MHz
         height : float
             antenna height, in m
+        areatype : string
+            whether using urban, suburban, or rural Hata loss function
 
     Returns
     -------
@@ -99,14 +182,14 @@ def SINR(A, x, y, radius, freq, height):
             signal-to-interference-and-noise ratio, power ratio
     """
 
-    signal_power = 10.**((A - hata_loss(np.sqrt(x**2. + y**2.), freq, height)) / 10.)
+    signal_power = 10.**((A - hata_loss(np.sqrt(x**2. + y**2.), freq, height, areatype=areatype)) / 10.)
     noise_power = 10.**(JN_noise / 10.)
-    interference_power = np.sum(cell_utilization * 10.**(interfere_power(A, x, y, radius, freq, height) / 10.)) # cell only utilized cell_utilization fraction of the time
+    interference_power = np.sum(cell_utilization * 10.**(interfere_power(A, x, y, radius, freq, height, areatype=areatype) / 10.)) # cell only utilized cell_utilization fraction of the time
     ratio = signal_power / (noise_power + interference_power)
 
     return ratio
 
-def rho_C_hex(bw, radius, gamma):
+def rho_C_hex(bw, radius, gamma, areatype="urban"):
     """
         Return total transmission capacity of station, assuming transmission evenly distributed over hexagonal cell
     
@@ -118,6 +201,8 @@ def rho_C_hex(bw, radius, gamma):
             cell radius in km
         gamma : float 
             spectral efficiency
+        areatype : string
+            whether using urban, suburban, or rural Hata loss function
 
     Returns
     -------
@@ -130,13 +215,13 @@ def rho_C_hex(bw, radius, gamma):
     else:
         cell_area = 3. * np.sqrt(3.) / 2. * radius**2.
         num_triangles = 6. * 2.
-        transmission = lambda x, y: num_triangles / np.log2(1. + SINR(A0, x, y, radius, freq_rep, height_rep))
+        transmission = lambda x, y: num_triangles / np.log2(1. + SINR(A0, x, y, radius, freq_rep, height_rep, areatype=areatype))
         mean_transmission = integrate.dblquad(transmission, 0., radius * np.sqrt(3./4.), lambda y: 0., lambda y: y / np.sqrt(3.))[0] # take only the first argument (result), not second (error estimate)
         channel_cap = gamma * cell_area * bw / mean_transmission
 
     return channel_cap
 
-def avg_path_loss(radius):
+def avg_path_loss(radius, areatype="urban"):
     """
         Return average path loss over the cell
     
@@ -144,6 +229,8 @@ def avg_path_loss(radius):
     ----------
         radius : float
             cell radius in km
+        areatype : string
+            whether using urban, suburban, or rural Hata loss function
 
     Returns
     -------
@@ -153,12 +240,12 @@ def avg_path_loss(radius):
 
     cell_area = 3. * np.sqrt(3.) / 2. * radius**2.
     num_triangles = 6. * 2.
-    path_loss = lambda y, x: num_triangles * hata_loss(np.sqrt(x**2. + y**2.), freq_rep, height_rep)
+    path_loss = lambda y, x: num_triangles * hata_loss(np.sqrt(x**2. + y**2.), freq_rep, height_rep, areatype=areatype)
     mean_path_loss = 1.0 / cell_area * integrate.dblquad(path_loss, 0., radius * np.sqrt(3./4.), lambda y: 0., lambda y: y / np.sqrt(3.))[0] # take only the first argument (result), not second (error estimate)
 
     return mean_path_loss
 
-def avg_SINR(radius):
+def avg_SINR(radius, areatype="urban"):
     """
         Return average SINR over the cell
     
@@ -166,6 +253,8 @@ def avg_SINR(radius):
     ----------
         radius : float
             cell radius in km
+        areatype : string
+            whether using urban, suburban, or rural Hata loss function
 
     Returns
     -------
@@ -175,7 +264,7 @@ def avg_SINR(radius):
 
     cell_area = 3. * np.sqrt(3.) / 2. * radius**2.
     num_triangles = 6. * 2.
-    SINR_ = lambda y, x: num_triangles * SINR(A0, x, y, radius, freq_rep, height_rep)
+    SINR_ = lambda y, x: num_triangles * SINR(A0, x, y, radius, freq_rep, height_rep, areatype=areatype)
     mean_SINR = 1.0 / cell_area * integrate.dblquad(SINR_, 0., radius * np.sqrt(3./4.), lambda y: 0., lambda y: y / np.sqrt(3.))[0] # take only the first argument (result), not second (error estimate)
 
     return mean_SINR
