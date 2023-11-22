@@ -1,14 +1,14 @@
 #!/bin/sh
 #
 #SBATCH --verbose
-#SBATCH --array=0-11
+#SBATCH --array=0
 #SBATCH --job-name=cntrfctls
 #SBATCH --output=slurm_%j.out
 #SBATCH --error=slurm_%j.err
 #SBATCH --time=2-12:00:00
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=16
-#SBATCH --mem=10GB
+#SBATCH --cpus-per-task=18
+#SBATCH --mem=12GB
 #SBATCH --mail-type=END
 #SBATCH --mail-user=jte254@nyu.edu
 

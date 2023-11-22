@@ -8,14 +8,14 @@ import demand.weightingmatrix as wm
 import demand.coefficients as coef
 import demand.gmm as gmm
 
-def stage(ds, thetainit, W, avg_price_el, sigma):
+def stage(ds, thetainit, W, avg_price_el, div_ratio):
     #----------------------------------------------------------------
     #   METHOD evaluateFC
     #----------------------------------------------------------------
      ## Compute the function and constraint values at x.
 
     def evaluateObjFct(x):
-        return gmm.objfct(ds, x, ds.data, W, gmm.g, avg_price_el, sigma)
+        return gmm.objfct(ds, x, ds.data, W, gmm.g, avg_price_el, div_ratio)
 
     def evaluateFC(x):
         start = time.time()
@@ -52,12 +52,12 @@ def stage(ds, thetainit, W, avg_price_el, sigma):
 
 
 
-def est(ds, thetainit, W, K, avg_price_el, sigma):
-    theta_1stage = stage(ds, thetainit, W, avg_price_el, sigma)
+def est(ds, thetainit, W, K, avg_price_el, div_ratio):
+    theta_1stage = stage(ds, thetainit, W, avg_price_el, div_ratio)
     print('First stage: ', flush=True)
     print(str(theta_1stage), flush=True)
-    What = wm.W(ds, theta_1stage, K, avg_price_el, sigma)
-    theta_2stage = stage(ds, theta_1stage, What, avg_price_el, sigma)
+    What = wm.W(ds, theta_1stage, K, avg_price_el, div_ratio)
+    theta_2stage = stage(ds, theta_1stage, What, avg_price_el, div_ratio)
     print('Second stage: ', flush=True)
     print(str(theta_2stage), flush=True)
     return theta_2stage, What

@@ -14,7 +14,7 @@ def mu_ijm(ds, theta, p, E_u, yc):
 def mutilde(ds, theta, X, p, E_u, v, O, yc):
     theta_v = theta[coef.v]
     theta_O = theta[coef.O]
-    sigma = theta[coef.sigma]
+    sigma = coef.theta_sigma(ds, theta, yc)
     mutilde_ijm = (theta_v * (v[:,:,np.newaxis] - ds.Xbar(v[:,:,np.newaxis])) + theta_O * (O[:,:,np.newaxis] - ds.Xbar(O[:,:,np.newaxis])) + mu_ijm(ds, theta, p, E_u, yc)) / (1. - sigma)
     # go from MxJ matrix to MxF, summing
     mutilde_ifm = np.tile(mutilde_ijm[:,:ds.J_O], (1,X.shape[0],1)) * ds.relevant_markets(X)[:,:ds.J_O*X.shape[0],np.newaxis] # for J_O
@@ -33,10 +33,10 @@ def use_f_idxs(ds, X, nonOxis):
             idxs[firmidx] = False
     return idxs
     
-def normalized_deltas(ds, theta, X, nonOxis, v, O, mutilde):
+def normalized_deltas(ds, theta, X, nonOxis, v, O, mutilde, yc):
     theta_v = theta[coef.v]
     theta_O = theta[coef.O]
-    sigma = theta[coef.sigma]
+    sigma = coef.theta_sigma(ds, theta, yc)
     idxs = np.ones(ds.Fnum(X), dtype=bool)
     norm = np.array([])
     normdelta = np.array([])
@@ -106,12 +106,12 @@ def deltatilde(theta, ds, X, nonOxis):
     mutilde_ifm = mutilde(ds, theta, X, p, E_u, v, O, yc)
     relevantmarkets = ds.relevant_markets(X)[:,idxs,np.newaxis]
     mktweights = ds.marketweights(X)[:,idxs,np.newaxis]
-    norm = normalized_deltas(ds, theta, X, nonOxis, v, O, mutilde_ifm)[0]
+    norm = normalized_deltas(ds, theta, X, nonOxis, v, O, mutilde_ifm, yc)[0]
     mutilde_ifm = mutilde_ifm[:,idxs,:] # only want the ones for which searching for deltas
-    contraction = lambda x: contractionmap(x, mutilde_ifm, norm, theta[coef.sigma], relevantmarkets, mktweights, yc, log_shares)
+    contraction = lambda x: contractionmap(x, mutilde_ifm, norm, coef.theta_sigma(ds, theta, yc), relevantmarkets, mktweights, yc, log_shares)
     max_evaluations_squarem = 500
     max_evaluations_simple = 1000
-    if theta[coef.sigma] > 0.8:
+    if coef.theta_sigma(ds, theta, yc) > 0.8:
         max_evaluations_squarem = 2000
         max_evaluations_simple = 2000
     initdeltas = np.zeros(np.sum(idxs))
@@ -133,13 +133,13 @@ def xi(ds, theta, X, nonOxis):
     deltatildes_wonormalizeddeltas = deltatilde(theta, ds, X, nonOxis)
     p, E_u, v, O = transformX(ds, theta, X)
     yc = ycX(ds, theta, X)
-    normdelta = normalized_deltas(ds, theta, X, nonOxis, v, O, mutilde(ds, theta, X, p, E_u, v, O, yc))[1]
+    normdelta = normalized_deltas(ds, theta, X, nonOxis, v, O, mutilde(ds, theta, X, p, E_u, v, O, yc), yc)[1]
     # put the deltas together - could use the fact that it's all the nonO's and MVNO is last
     deltatildes = np.concatenate((deltatildes_wonormalizeddeltas, normdelta))
     deltatildes = deltatildes[ds.ftj(X).astype(int)]
     theta_v = theta[coef.v]
     theta_O = theta[coef.O]
-    sigma = theta[coef.sigma]
+    sigma = coef.theta_sigma(ds, theta, yc)
     xis = deltatildes * (1. - sigma) - theta_v * ds.Xbar(v[:,:,np.newaxis])[:,:,0] - theta_O * ds.Xbar(O[:,:,np.newaxis])[:,:,0]
     return xis
 
@@ -147,9 +147,9 @@ def s_mji(ds, theta, X, xis):
     p, E_u, v, O = transformX(ds, theta, X)
     theta_v = theta[coef.v]
     theta_O = theta[coef.O]
-    sigma = theta[coef.sigma]
-    deltas = theta_v * v + theta_O * O + xis
     yc = ycX(ds, theta, X)
+    sigma = coef.theta_sigma(ds, theta, yc)
+    deltas = theta_v * v + theta_O * O + xis
     mus = mu_ijm(ds, theta, p, E_u, yc)
     deltamu = deltas[:,:,np.newaxis] + mus
     #expdeltamu = np.exp(deltamu / (1. - sigma)) # not necessary unless first s_ijm definition is uncommented
@@ -179,3 +179,39 @@ def elast_constraint(ds, theta, X, xis=None, nonOxis=None):
     shares_new_O = np.sum(shares_new[:,ds.Oproducts], axis=1, keepdims=True)
     elast = (shares_new_O - shares_O) / (0.01 * shares_O)
     return elast
+
+def div_ratio_numdenom(ds, theta, X, xis=None, nonOxis=None):
+    if xis is None:
+        xis = xi(ds, theta, X, nonOxis)
+        
+    # Original shares
+    shares = s_mj(ds, theta, X, xis)
+    shares_Org = np.sum(shares[:,ds.Oproducts], axis=1, keepdims=True)
+    shares_0 = 1.0 - np.sum(shares, axis=1, keepdims=True)
+    
+    # Determine \partial q_k / \partial P_ORG
+    sum_dq0_dpORG = 0.0
+    sum_dqORG_dpORG = 0.0
+    for j in range(ds.J_O): # this works since Orange products are ordered first
+        Delta = np.zeros(len(ds.dim3))
+        pidx = ds.chars.index(ds.pname)
+        p_eps = 0.01 # size of our numerical differentiation
+        Delta[pidx] = p_eps # direct array assignment fine b/c theta doesn't enter
+        Delta = np.tile(Delta, (ds.J_O,1)) * (np.arange(ds.J_O) == j)[:,np.newaxis] # only j gets the additional p_eps
+        Delta = np.vstack((Delta, np.tile(np.zeros(len(ds.dim3)), (ds.J - ds.J_O, 1))))
+        shares_new = s_mj(ds, theta, X + Delta[np.newaxis,:,:], xis)
+        shares_new_Org = np.sum(shares_new[:,ds.Oproducts], axis=1, keepdims=True)
+        shares_new_0 = 1.0 - np.sum(shares_new, axis=1, keepdims=True)
+        p_j = X[0,j,pidx]
+        sum_dq0_dpORG = sum_dq0_dpORG + (shares_new_0 - shares_0) / p_eps * p_j
+        sum_dqORG_dpORG = sum_dqORG_dpORG + (shares_new_Org - shares_Org) / p_eps * p_j
+    
+    return sum_dq0_dpORG, sum_dqORG_dpORG
+
+def div_ratio(ds, theta, X, xis=None, nonOxis=None):
+    sum_dq0_dpORG, sum_dqORG_dpORG = div_ratio_numdenom(ds, theta, X, xis=xis, nonOxis=nonOxis)
+     
+    # Determine diversion ratio
+    div = -sum_dq0_dpORG / sum_dqORG_dpORG
+    
+    return div

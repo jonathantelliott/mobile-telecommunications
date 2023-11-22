@@ -23,11 +23,9 @@ import demand.demandsystem as demsys
 import counterfactuals.infrastructurefunctions as infr
 import counterfactuals.infrastructureequilibrium as ie
 import demand.coefficients as coef
+import demand.blpextension as blp
 
 import pickle
-
-
-
 
 # %%
 print_ = False
@@ -35,7 +33,7 @@ save_ = True
 
 # %%
 avg_price_elasts = paths.avg_price_elasts
-sigmas = paths.sigmas
+div_ratios = paths.div_ratios
 
 # %%
 # Import infrastructure / quality data
@@ -53,9 +51,6 @@ with open(f"{paths.data_path}demandsystem.obj", "rb") as file_ds:
 market_idx = ds.dim3.index(ds.marketname)
 market_numbers = np.max(ds.data[:,:,market_idx], axis=1)
 ds.data = ds.data[market_numbers > 0,:,:] # drop "Rest of France"# %%
-
-
-
 
 # %%
 # Define functions to load results
@@ -77,6 +72,19 @@ avg_path_losses = lambda x,y: np.load(f"{paths.arrays_path}avg_path_losses_e{x}_
 avg_SINR = lambda x,y: np.load(f"{paths.arrays_path}avg_SINR_e{x}_n{y}.npy")
 partial_elasts = lambda x,y: np.load(f"{paths.arrays_path}partial_elasts_e{x}_n{y}.npy")
 full_elasts = lambda x,y: np.load(f"{paths.arrays_path}full_elasts_e{x}_n{y}.npy")
+p_stars_allfixed = lambda x,y: np.load(f"{paths.arrays_path}p_stars_allfixed_e{x}_n{y}.npy")
+R_stars_allfixed = lambda x,y: np.load(f"{paths.arrays_path}R_stars_allfixed_e{x}_n{y}.npy")
+num_stations_stars_allfixed = lambda x,y: np.load(f"{paths.arrays_path}num_stations_stars_allfixed_e{x}_n{y}.npy")
+num_stations_per_firm_stars_allfixed = lambda x,y: np.load(f"{paths.arrays_path}num_stations_per_firm_stars_allfixed_e{x}_n{y}.npy")
+q_stars_allfixed = lambda x,y: np.load(f"{paths.arrays_path}q_stars_allfixed_e{x}_n{y}.npy")
+cs_by_type_allfixed = lambda x,y: np.load(f"{paths.arrays_path}cs_by_type_allfixed_e{x}_n{y}.npy")
+cs_allfixed = lambda x,y: np.load(f"{paths.arrays_path}cs_allfixed_e{x}_n{y}.npy")
+ps_allfixed = lambda x,y: np.load(f"{paths.arrays_path}ps_allfixed_e{x}_n{y}.npy")
+ts_allfixed = lambda x,y: np.load(f"{paths.arrays_path}ts_allfixed_e{x}_n{y}.npy")
+ccs_allfixed = lambda x,y: np.load(f"{paths.arrays_path}ccs_allfixed_e{x}_n{y}.npy")
+ccs_per_bw_allfixed = lambda x,y: np.load(f"{paths.arrays_path}ccs_per_bw_allfixed_e{x}_n{y}.npy")
+avg_path_losses_allfixed = lambda x,y: np.load(f"{paths.arrays_path}avg_path_losses_allfixed_e{x}_n{y}.npy")
+avg_SINR_allfixed = lambda x,y: np.load(f"{paths.arrays_path}avg_SINR_allfixed_e{x}_n{y}.npy")
 partial_Pif_partial_bf_allfixed = lambda x,y: np.load(f"{paths.arrays_path}partial_Pif_partial_bf_allfixed_e{x}_n{y}.npy")
 partial_Piotherf_partial_bf_allfixed = lambda x,y: np.load(f"{paths.arrays_path}partial_Piotherf_partial_bf_allfixed_e{x}_n{y}.npy")
 partial_diffPif_partial_bf_allfixed = lambda x,y: np.load(f"{paths.arrays_path}partial_diffPif_partial_bf_allfixed_e{x}_n{y}.npy")
@@ -181,6 +189,18 @@ ccs_per_bw_se = lambda x,y: np.load(f"{paths.arrays_path}ccs_per_bw_se_e{x}_n{y}
 avg_path_losses_se = lambda x,y: np.load(f"{paths.arrays_path}avg_path_losses_se_e{x}_n{y}.npy")
 partial_elasts_se = lambda x,y: np.load(f"{paths.arrays_path}partial_elasts_se_e{x}_n{y}.npy")
 full_elasts_se = lambda x,y: np.load(f"{paths.arrays_path}full_elasts_se_e{x}_n{y}.npy")
+p_stars_allfixed_se = lambda x,y: np.load(f"{paths.arrays_path}p_stars_allfixed_se_e{x}_n{y}.npy")
+R_stars_allfixed_se = lambda x,y: np.load(f"{paths.arrays_path}R_stars_allfixed_se_e{x}_n{y}.npy")
+num_stations_stars_allfixed_se = lambda x,y: np.load(f"{paths.arrays_path}num_stations_stars_allfixed_se_e{x}_n{y}.npy")
+num_stations_per_firm_stars_allfixed_se = lambda x,y: np.load(f"{paths.arrays_path}num_stations_per_firm_stars_allfixed_se_e{x}_n{y}.npy")
+q_stars_allfixed_se = lambda x,y: np.load(f"{paths.arrays_path}q_stars_allfixed_se_e{x}_n{y}.npy")
+cs_by_type_allfixed_se = lambda x,y: np.load(f"{paths.arrays_path}cs_by_type_allfixed_se_e{x}_n{y}.npy")
+cs_allfixed_se = lambda x,y: np.load(f"{paths.arrays_path}cs_allfixed_se_e{x}_n{y}.npy")
+ps_allfixed_se = lambda x,y: np.load(f"{paths.arrays_path}ps_allfixed_se_e{x}_n{y}.npy")
+ts_allfixed_se = lambda x,y: np.load(f"{paths.arrays_path}ts_allfixed_se_e{x}_n{y}.npy")
+ccs_allfixed_se = lambda x,y: np.load(f"{paths.arrays_path}ccs_allfixed_se_e{x}_n{y}.npy")
+ccs_per_bw_allfixed_se = lambda x,y: np.load(f"{paths.arrays_path}ccs_per_bw_allfixed_se_e{x}_n{y}.npy")
+avg_path_losses_allfixed_se = lambda x,y: np.load(f"{paths.arrays_path}avg_path_losses_allfixed_se_e{x}_n{y}.npy")
 partial_Pif_partial_bf_allfixed_se = lambda x,y: np.load(f"{paths.arrays_path}partial_Pif_partial_bf_allfixed_se_e{x}_n{y}.npy")
 partial_Piotherf_partial_bf_allfixed_se = lambda x,y: np.load(f"{paths.arrays_path}partial_Piotherf_partial_bf_allfixed_se_e{x}_n{y}.npy")
 partial_diffPif_partial_bf_allfixed_se = lambda x,y: np.load(f"{paths.arrays_path}partial_diffPif_partial_bf_allfixed_se_e{x}_n{y}.npy")
@@ -267,10 +287,7 @@ per_user_costs_se = lambda x,y: np.load(f"{paths.arrays_path}per_user_costs_se_e
 
 densities = lambda x,y: np.load(f"{paths.arrays_path}cntrfctl_densities_e{x}_n{y}.npy")
 densities_pops = lambda x,y: np.load(f"{paths.arrays_path}cntrfctl_densities_pop_e{x}_n{y}.npy")
-bw_vals = lambda x,y: np.load(f"{paths.arrays_path}cntrfctl_bw_vals_e{elast_id}_n{nest_id}.npy")
-
-
-
+bw_vals = lambda x,y: np.load(f"{paths.arrays_path}cntrfctl_bw_vals_e{x}_n{y}.npy")
 
 # %%
 # Define common graph features
@@ -279,7 +296,7 @@ num_firms_to_simulate_extend = 9
 num_firms_array = np.arange(num_firms_to_simulate, dtype=int) + 1
 num_firms_array_extend = np.arange(num_firms_to_simulate_extend, dtype=int) + 1
 elast_ids = np.arange(avg_price_elasts.shape[0])
-nest_ids = np.arange(sigmas.shape[0])
+nest_ids = np.arange(div_ratios.shape[0])
 elast_ids_sparse = np.copy(elast_ids)
 nest_ids_sparse = np.copy(nest_ids)
 default_elast_id = paths.default_elast_id
@@ -308,8 +325,7 @@ def create_file(file_name, file_contents):
     f = open(file_name, "w")
     f.write(file_contents)
     f.close()
-
-
+    
 # %%
 # Spectral efficiencies
 spectral_efficiencies_params = np.load(f"{paths.arrays_path}spectral_efficiencies.npy")
@@ -319,8 +335,7 @@ if save_:
     create_file(f"{paths.stats_path}mean_spectral_efficiency.tex", f"{np.mean(spectral_efficiencies_params):.3f}")
     create_file(f"{paths.stats_path}std_spectral_efficiency.tex", f"{np.std(spectral_efficiencies_params):.3f}")
     create_file(f"{paths.stats_path}weighted_avg_spectral_efficiency.tex", f"{np.average(spectral_efficiencies_params, weights=populations):.3f}")
-
-
+    
 # %%
 # Per-user estimated costs
 
@@ -358,45 +373,7 @@ if save_:
 
 if print_:
     plt.show()
-
-dlimidx = ds.chars.index(ds.dlimname)
-dlims = ds.data[0,:,dlimidx]
-
-def process_c_u(c_u):
-    c_u_small = np.mean(c_u[dlims < 1000.0])
-    c_u_medium = np.mean(c_u[(dlims >= 1000.0) & (dlims < 5000.0)])
-    c_u_big = np.mean(c_u[dlims >= 5000.0])
-    return np.array([c_u_small, c_u_medium, c_u_big])
-
-to_tex = "\\begin{tabular}{c c c c c} \n"
-to_tex += " & \\textbf{Nesting} & $\\bar{d} < 1\\,000$ & $1\\,000 \\leq \\bar{d} < 5\\,000$ & $\\bar{d} \\geq 5\\,000$ \\\\ \n"
-to_tex += "\\textbf{Elasticity} & \\textbf{Parameter} & (in \\euro{}) & (in \\euro{}) & (in \\euro{}) \\\\ \n \t \\hline \n"
-for i, elast_id in enumerate(elast_ids):
-    to_tex += f"$\\boldsymbol{{{avg_price_elasts[elast_id]}}}$" if (elast_id == default_elast_id) else f"${avg_price_elasts[elast_id]}$"
-    for j, nest_id in enumerate(nest_ids):
-        bold_ = (elast_id == default_elast_id) and (nest_id == default_nest_id)
-        to_tex += f" & $\\boldsymbol{{{sigmas[nest_id]}}}$ & " if bold_ else f" & ${sigmas[nest_id]}$ & "
-        to_tex +=  " & ".join(f"$\\boldsymbol{{{c_u:.2f}}}$ " for c_u in process_c_u(c_u(elast_id,nest_id))) if bold_ else " & ".join(f"${c_u:.2f}$ " for c_u in process_c_u(c_u(elast_id,nest_id)))
-        to_tex += " \\\\ \n"
-        to_tex += " & & \\textbf{(}" if bold_ else " & & ("
-        to_tex += "\\textbf{)} & \\textbf{(}".join(f"$\\boldsymbol{{{c_u:.2f}}}$" for c_u in process_c_u(c_u_se(elast_id,nest_id))) if bold_ else ") & (".join(f"${c_u:.2f}$" for c_u in process_c_u(c_u_se(elast_id,nest_id)))
-        to_tex += "\\textbf{)} \\\\ \n" if bold_ else ") \\\\ \n"
-to_tex += "\\hline \n" 
-to_tex += "\\end{tabular} \n"
-if save_:
-    create_file(f"{paths.tables_path}c_u.tex", to_tex)
-if print_:
-    print(to_tex)
     
-if save_:
-    c_u_prefspec = process_c_u(c_u(default_elast_id, default_nest_id))
-    create_file(f"{paths.stats_path}c_u_small.tex", f"{c_u_prefspec[0]:.2f}")
-    create_file(f"{paths.stats_path}c_u_med.tex", f"{c_u_prefspec[1]:.2f}")
-    create_file(f"{paths.stats_path}c_u_large.tex", f"{c_u_prefspec[2]:.2f}")
-
-
-
-
 # %%
 # Per-base station estimated costs
 
@@ -421,29 +398,53 @@ if save_:
 
 if print_:
     plt.show()
+    
+# %%
+# Costs table
 
+dlimidx = ds.chars.index(ds.dlimname)
+dlims = ds.data[0,:,dlimidx]
+
+# Per-user costs
+
+def process_c_u(c_u):
+    c_u_small = np.mean(c_u[dlims < 1000.0])
+    c_u_medium = np.mean(c_u[(dlims >= 1000.0) & (dlims < 5000.0)])
+    c_u_big = np.mean(c_u[dlims >= 5000.0])
+    return np.array([c_u_small, c_u_medium, c_u_big])
+
+to_tex = "\\begin{tabular}{l c c c c c c c c} \\hline \n"
+to_tex += "\\textit{Per-user costs} & & & & $\\bar{d} < 1\\,000$ & & $1\\,000 \\leq \\bar{d} < 5\\,000$ & & $\\bar{d} \\geq 5\\,000$ \\\\ \n"
+to_tex += "$\\qquad \\hat{c}_{j}^{u}$ & & & & (in \\euro{}) & & (in \\euro{}) & & (in \\euro{}) \\\\ \n "
+to_tex += "\\cline{5-5} \\cline{7-7} \\cline{9-9}"
+to_tex +=  " & & & & " + " & & ".join(f"${c_u:.2f}$ " for c_u in process_c_u(c_u(default_elast_id,default_nest_id)))
+to_tex += " \\\\ \n"
+to_tex += " & & & & (" + ") & & (".join(f"${c_u:.2f}$" for c_u in process_c_u(c_u_se(default_elast_id,default_nest_id))) + ") \\\\ \n"
+to_tex += " & & & & & & & & \\\\ \n"
+    
+if save_:
+    c_u_prefspec = process_c_u(c_u(default_elast_id, default_nest_id))
+    create_file(f"{paths.stats_path}c_u_small.tex", f"{c_u_prefspec[0]:.2f}")
+    create_file(f"{paths.stats_path}c_u_med.tex", f"{c_u_prefspec[1]:.2f}")
+    create_file(f"{paths.stats_path}c_u_large.tex", f"{c_u_prefspec[2]:.2f}")
+    
+# Per-base station costs
+    
 def process_c_R(c_R):
-    return 200. * np.mean(c_R * 75.0, axis=0) # 200 to convert from monthly to perpetuity
+    return 200.0 * np.mean(c_R * 75.0, axis=0) # 200 to convert from monthly to perpetuity, 75 MHz
 
 def process_c_R_sd(c_R):
-    return np.std(200. * c_R * 75.0, axis=0) # 200 to convert from monthly to perpetuity
+    return np.std(200.0 * c_R * 75.0, axis=0) # 200 to convert from monthly to perpetuity, 75 MHz
 
-to_tex = "\\begin{tabular}{c c c c c c} \n"
-to_tex += " & \\textbf{Nesting} & \\textbf{Orange} & \\textbf{SFR} & \\textbf{Free} & \\textbf{Bouygues} \\\\ \n"
-to_tex += "\\textbf{Elasticity} & \\textbf{Parameter} & (in \\euro{}) & (in \\euro{}) & (in \\euro{}) & (in \\euro{}) \\\\ \n \t \\hline \n"
-for i, elast_id in enumerate(elast_ids):
-    to_tex += f"$\\boldsymbol{{{avg_price_elasts[elast_id]}}}$" if (elast_id == default_elast_id) else f"${avg_price_elasts[elast_id]}$"
-    for j, nest_id in enumerate(nest_ids):
-        bold_ = (elast_id == default_elast_id) and (nest_id == default_nest_id)
-        to_tex += f" & $\\boldsymbol{{{sigmas[nest_id]}}}$ & " if bold_ else f" & ${sigmas[nest_id]}$ & "
-        to_tex += " & ".join(f"$\\boldsymbol{{{c_R:,.0f}}}$ ".replace(",","\\,") for c_R in process_c_R(c_R(elast_id,nest_id))) if bold_ else " & ".join(f"${c_R:,.0f}$ ".replace(",","\\,") for c_R in process_c_R(c_R(elast_id,nest_id)))
-        to_tex += " \\\\ \n"
-        to_tex += " & & \\textbf{(}" if bold_ else " & & ("
-        to_tex += "\\textbf{)} & \\textbf{(}".join(f"$\\boldsymbol{{{c_R:,.0f}}}$".replace(",","\\,") for c_R in process_c_R_sd(c_R(elast_id,nest_id))) if bold_ else ") & (".join(f"${c_R:,.0f}$".replace(",","\\,") for c_R in process_c_R_sd(c_R(elast_id,nest_id)))
-        to_tex += "\\textbf{)} \\\\ \n" if bold_ else ") \\\\ \n"
-to_tex += "\\hline \n \\end{tabular}"
+to_tex += "\\textit{Per-base station costs} & & Orange & & SFR & & Free & & Bouygues \\\\ \n"
+to_tex += "$\\qquad \\hat{C}_{f}$ & & (in \\euro{}) & & (in \\euro{}) & & (in \\euro{}) & & (in \\euro{}) \\\\ \n"
+to_tex += "\\cline{3-3} \\cline{5-5} \\cline{7-7} \\cline{9-9}"
+to_tex += " & & " + " & & ".join(f"${c_R:,.0f}$ ".replace(",","\\,") for c_R in process_c_R(c_R(default_elast_id,default_nest_id))) + " \\\\ \n"
+to_tex += " & & (" + ") & & (".join(f"${c_R:,.0f}$".replace(",","\\,") for c_R in process_c_R_sd(c_R(default_elast_id,default_nest_id))) + ") \\\\ \n"
+to_tex += "\\hline \n"
+to_tex += "\\end{tabular} \n"
 if save_:
-    create_file(f"{paths.tables_path}c_R.tex", to_tex)
+    create_file(f"{paths.tables_path}costs_estimates_table.tex", to_tex)
 if print_:
     print(to_tex)
     
@@ -459,10 +460,7 @@ if save_:
     create_file(f"{paths.stats_path}c_R_std_SFR.tex", f"{np.round(c_R_prefspec_std[1], -3):,.0f}".replace(",","\\,"))
     create_file(f"{paths.stats_path}c_R_std_FREE.tex", f"{np.round(c_R_prefspec_std[2], -3):,.0f}".replace(",","\\,"))
     create_file(f"{paths.stats_path}c_R_std_BYG.tex", f"{np.round(c_R_prefspec_std[3], -3):,.0f}".replace(",","\\,"))
-
-
-
-
+    
 # %%
 # Values used in counterfactuals
 
@@ -474,10 +472,7 @@ print(f"10 GB c_u: {np.mean(c_u(default_elast_id,default_nest_id)[ds.data[0,:,dl
 if save_:
     create_file(f"{paths.stats_path}per_user_cost_lowdlim.tex", f"{per_user_costs(default_elast_id,default_nest_id)[0]:.2f}")
     create_file(f"{paths.stats_path}per_user_cost_highdlim.tex", f"{per_user_costs(default_elast_id,default_nest_id)[1]:.2f}")
-
-
-
-
+    
 # %%
 # Endogenous variables - number of firms
 
@@ -532,6 +527,7 @@ axs[1,1].plot(num_firms_array, ccs_per_bw(default_elast_id,default_nest_id) - 1.
 axs[1,1].set_xlabel("number of firms", fontsize=x_fontsize)
 axs[1,1].set_ylabel("Mbps / MHz", fontsize=y_fontsize)
 axs[1,1].set_title("channel capacity / unit bw", fontsize=title_fontsize)
+axs[1,1].ticklabel_format(useOffset=False)
 
 # download speeds
 axs[1,2].plot(num_firms_array, q_stars(default_elast_id,default_nest_id), color="black", lw=lw, alpha=alpha, label="download speed")
@@ -580,10 +576,111 @@ if save_:
 
 if print_:
     plt.show()
+    
+# %%
+# Endogenous variables - number of firms - all fixed cost
 
+fig, axs = plt.subplots(2, 3, figsize=(12.0, 8.0), squeeze=False)
 
+x_fontsize = "x-large"
+y_fontsize = "x-large"
+title_fontsize = "xx-large"
 
+# dlim = 1,000 prices
+axs[0,0].plot(num_firms_array, p_stars_allfixed(default_elast_id,default_nest_id)[:,0], color="black", lw=lw, alpha=alpha)
+axs[0,0].plot(num_firms_array, p_stars_allfixed(default_elast_id,default_nest_id)[:,0] + 1.96 * p_stars_allfixed_se(default_elast_id,default_nest_id)[:,0], color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+axs[0,0].plot(num_firms_array, p_stars_allfixed(default_elast_id,default_nest_id)[:,0] - 1.96 * p_stars_allfixed_se(default_elast_id,default_nest_id)[:,0], color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+axs[0,0].set_xlabel("number of firms", fontsize=x_fontsize)
+axs[0,0].set_ylabel("$p_{j}^{*}$ (in \u20ac)", fontsize=y_fontsize)
+axs[0,0].set_title("1$\,$000 MB plan prices", fontsize=title_fontsize)
 
+# dlim = 10,000 prices
+axs[0,1].plot(num_firms_array, p_stars_allfixed(default_elast_id,default_nest_id)[:,1], color="black", lw=lw, alpha=alpha)
+axs[0,1].plot(num_firms_array, p_stars_allfixed(default_elast_id,default_nest_id)[:,1] + 1.96 * p_stars_allfixed_se(default_elast_id,default_nest_id)[:,1], color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+axs[0,1].plot(num_firms_array, p_stars_allfixed(default_elast_id,default_nest_id)[:,1] - 1.96 * p_stars_allfixed_se(default_elast_id,default_nest_id)[:,1], color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+axs[0,1].set_xlabel("number of firms", fontsize=x_fontsize)
+axs[0,1].set_ylabel("$p_{j}^{*}$ (in \u20ac)", fontsize=y_fontsize)
+axs[0,1].set_title("10$\,$000 MB plan prices", fontsize=title_fontsize)
+
+# radius
+axs[0,2].plot(num_firms_array, num_stations_per_firm_stars_allfixed(default_elast_id,default_nest_id) * 1000.0, color="black", lw=lw, alpha=alpha)
+axs[0,2].plot(num_firms_array, num_stations_per_firm_stars_allfixed(default_elast_id,default_nest_id) * 1000.0 + 1.96 * num_stations_per_firm_stars_allfixed_se(default_elast_id,default_nest_id) * 1000.0, color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+axs[0,2].plot(num_firms_array, num_stations_per_firm_stars_allfixed(default_elast_id,default_nest_id) * 1000.0 - 1.96 * num_stations_per_firm_stars_allfixed_se(default_elast_id,default_nest_id) * 1000.0, color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+axs[0,2].set_xlabel("number of firms", fontsize=x_fontsize)
+axs[0,2].set_ylabel("number of stations\n(per 1000 people)", fontsize=y_fontsize)
+axs[0,2].set_title("number of stations / firm", fontsize=title_fontsize)
+
+# total number of stations
+axs[1,0].plot(num_firms_array, num_stations_stars_allfixed(default_elast_id,default_nest_id) * 1000.0, color="black", lw=lw, alpha=alpha)
+axs[1,0].plot(num_firms_array, num_stations_stars_allfixed(default_elast_id,default_nest_id) * 1000.0 + 1.96 * num_stations_stars_allfixed_se(default_elast_id,default_nest_id) * 1000.0, color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+axs[1,0].plot(num_firms_array, num_stations_stars_allfixed(default_elast_id,default_nest_id) * 1000.0 - 1.96 * num_stations_stars_allfixed_se(default_elast_id,default_nest_id) * 1000.0, color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+axs[1,0].set_xlabel("number of firms", fontsize=x_fontsize)
+axs[1,0].set_ylabel("number of stations\n(per 1000 people)", fontsize=y_fontsize)
+axs[1,0].set_title("total number of stations", fontsize=title_fontsize)
+
+# path loss
+# axs[1,1].plot(num_firms_array, avg_path_losses_allfixed(default_elast_id,default_nest_id), color="black", lw=lw, alpha=alpha)
+# axs[1,1].plot(num_firms_array, avg_path_losses_allfixed(default_elast_id,default_nest_id) + 1.96 * avg_path_losses_allfixed_se(default_elast_id,default_nest_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+# axs[1,1].plot(num_firms_array, avg_path_losses_allfixed(default_elast_id,default_nest_id) - 1.96 * avg_path_losses_allfixed_se(default_elast_id,default_nest_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+# axs[1,1].set_xlabel("number of firms", fontsize=x_fontsize)
+# axs[1,1].set_ylabel("dB", fontsize=y_fontsize)
+# axs[1,1].set_title("average path loss", fontsize=title_fontsize)
+axs[1,1].plot(num_firms_array, ccs_per_bw_allfixed(default_elast_id,default_nest_id), color="black", lw=lw, alpha=alpha)
+axs[1,1].plot(num_firms_array, ccs_per_bw_allfixed(default_elast_id,default_nest_id) + 1.96 * ccs_per_bw_allfixed_se(default_elast_id,default_nest_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+axs[1,1].plot(num_firms_array, ccs_per_bw_allfixed(default_elast_id,default_nest_id) - 1.96 * ccs_per_bw_allfixed_se(default_elast_id,default_nest_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+axs[1,1].set_xlabel("number of firms", fontsize=x_fontsize)
+axs[1,1].set_ylabel("Mbps / MHz", fontsize=y_fontsize)
+axs[1,1].set_title("channel capacity / unit bw", fontsize=title_fontsize)
+axs[1,1].ticklabel_format(useOffset=False)
+
+# download speeds
+axs[1,2].plot(num_firms_array, q_stars_allfixed(default_elast_id,default_nest_id), color="black", lw=lw, alpha=alpha, label="download speed")
+axs[1,2].plot(num_firms_array, q_stars_allfixed(default_elast_id,default_nest_id) + 1.96 * q_stars_allfixed_se(default_elast_id,default_nest_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+axs[1,2].plot(num_firms_array, q_stars_allfixed(default_elast_id,default_nest_id) - 1.96 * q_stars_allfixed_se(default_elast_id,default_nest_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+axs[1,2].plot(num_firms_array, ccs_allfixed(default_elast_id,default_nest_id), color="black", lw=lw, alpha=0.9, ls=(0, (3, 1, 1, 1)), label="channel capacity")
+# axs[1,2].plot(num_firms_array, ccs_allfixed(default_elast_id,default_nest_id) + 1.96 * ccs_allfixed_se(default_elast_id,default_nest_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls=(0, (3, 1, 1, 1)))
+# axs[1,2].plot(num_firms_array, ccs_allfixed(default_elast_id,default_nest_id) - 1.96 * ccs_allfixed_se(default_elast_id,default_nest_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls=(0, (3, 1, 1, 1)))
+axs[1,2].set_xlabel("number of firms", fontsize=x_fontsize)
+axs[1,2].set_ylabel("$Q_{f}^{*}$ (in Mbps)", fontsize=y_fontsize)
+axs[1,2].set_title("download speeds", fontsize=title_fontsize)
+
+# Set axis limits
+min_y_p = np.nanmin(p_stars_allfixed(default_elast_id,default_nest_id)[1:,:]) - 2.0
+max_y_p = np.nanmax(p_stars_allfixed(default_elast_id,default_nest_id)[1:,:]) + 5.0
+min_y_num_stations_per_firm = np.nanmin(num_stations_per_firm_stars_allfixed(default_elast_id,default_nest_id) * 1000.0)
+max_y_num_stations_per_firm = np.nanmax(num_stations_per_firm_stars_allfixed(default_elast_id,default_nest_id) * 1000.0)
+min_y_num_stations = np.nanmin(num_stations_stars_allfixed(default_elast_id,default_nest_id)[:] * 1000.0)
+max_y_num_stations = np.nanmax(num_stations_stars_allfixed(default_elast_id,default_nest_id)[:] * 1000.0)
+# min_y_pl = np.nanmin(avg_path_losses(default_elast_id,default_nest_id)[:]) - 2.
+# max_y_pl = np.nanmax(avg_path_losses(default_elast_id,default_nest_id)[:]) + 2.
+min_y_q = np.minimum(np.nanmin(q_stars_allfixed(default_elast_id,default_nest_id)[:]), np.nanmin(ccs_allfixed(default_elast_id,default_nest_id)[1:]))
+max_y_q = np.maximum(np.nanmax(q_stars_allfixed(default_elast_id,default_nest_id)[:]), np.nanmax(ccs_allfixed(default_elast_id,default_nest_id)[1:]))
+diff_p = max_y_p - min_y_p
+diff_num_stations_per_firm = max_y_num_stations_per_firm - min_y_num_stations_per_firm
+diff_num_stations = max_y_num_stations - min_y_num_stations
+# diff_pl = max_y_pl - min_y_pl
+diff_q = max_y_q - min_y_q
+margin = 0.1
+for i in range(2):
+    axs[0,i].set_ylim((min_y_p - margin * diff_p, max_y_p + margin * diff_p))
+# axs[0,2].set_ylim((min_y_num_stations_per_firm - margin * diff_num_stations_per_firm, max_y_num_stations_per_firm + margin * diff_num_stations_per_firm))
+# axs[1,0].set_ylim((min_y_num_stations - margin * diff_num_stations, max_y_num_stations + margin * diff_num_stations))
+# axs[1,1].set_ylim((min_y_pl - margin * diff_pl, max_y_pl + margin * diff_pl))
+axs[1,2].set_ylim((min_y_q - margin * diff_q, max_y_q + margin * diff_q))
+for i in range(2):
+    for j in range(3):
+        axs[i,j].set_xticks(num_firms_array)
+        
+axs[1,2].legend(loc="best")
+
+plt.tight_layout()
+
+if save_:
+    plt.savefig(f"{paths.graphs_path}counterfactual_variables_1gb10gb_allfixed.pdf", bbox_inches = "tight", transparent=True)
+
+if print_:
+    plt.show()
+    
 # %%
 # Elasticities
 
@@ -621,10 +718,7 @@ if save_:
 
 if print_:
     plt.show()
-
-
-
-
+    
 # %%
 # Bandwidth derivatives (all fixed)
 
@@ -682,10 +776,7 @@ if print_:
     
 if save_:
     create_file(f"{paths.stats_path}auction_val_allfixed.tex", f"{partial_diffPif_partial_bf_allfixed(default_elast_id,default_nest_id)[3] * 200.0:.2f}")
-
-
-
-
+    
 # %%
 # Bandwidth derivatives (all bw)
 
@@ -738,10 +829,7 @@ if print_:
     
 if save_:
     create_file(f"{paths.stats_path}auction_val_allbw.tex", f"{partial_diffPif_partial_bf_allbw(default_elast_id,default_nest_id)[3] * 200.0:.2f}")
-
-
-
-
+    
 def int_to_en(num):
     """Given an int32 number, print it in English. Taken from https://stackoverflow.com/questions/8982163/how-do-i-tell-python-to-convert-integers-into-words"""
     d = { 0 : "zero", 1 : "one", 2 : "two", 3 : "three", 4 : "four", 5 : "five",
@@ -775,10 +863,14 @@ if print_:
 
 if save_:
     create_file(f"{paths.stats_path}ratio_CS_to_Pif.tex", ratio_CS_to_Pif)
+    
+ratio_CS_to_Pif_allfixed = int_to_en(np.round(partial_CS_partial_b_allfixed(default_elast_id,default_nest_id)[3] / partial_diffPif_partial_bf_allfixed(default_elast_id,default_nest_id)[3], 0).astype(int))
+if print_:
+    print(ratio_CS_to_Pif_allfixed)
 
-
-
-
+if save_:
+    create_file(f"{paths.stats_path}ratio_CS_to_Pif_allfixed.tex", ratio_CS_to_Pif_allfixed)
+    
 # %%
 # Welfare for number of firms
 
@@ -838,10 +930,67 @@ if save_:
     
 if print_:
     plt.show()
+    
+# %%
+# Welfare for number of firms - all fixed
 
+fig, axs = plt.subplots(1, 3, figsize=(9.0,4.0), sharex=True, squeeze=False)
 
+x_fontsize = "large"
+y_fontsize = "large"
+title_fontsize = "x-large"
 
+# consumer surplus
+axs[0,0].plot(num_firms_array_extend, cs_allfixed(default_elast_id,default_nest_id), color="black", lw=lw, alpha=alpha)
+#axs[0,0].plot(num_firms_array_extend, cs_allfixed(default_elast_id,default_nest_id) + 1.96 * cs_allfixed_se(default_elast_id,default_nest_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+#axs[0,0].plot(num_firms_array_extend, cs_allfixed(default_elast_id,default_nest_id) - 1.96 * cs_allfixed_se(default_elast_id,default_nest_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+axs[0,0].axvline(x=num_firms_array_extend[np.nanargmax(cs_allfixed(default_elast_id,default_nest_id))], color="black", linestyle="--", alpha=0.25)
+axs[0,0].set_xlabel("number of firms", fontsize=x_fontsize)
+axs[0,0].set_ylabel("\u20ac / person", fontsize=y_fontsize)
+axs[0,0].set_title("consumer surplus", fontsize=title_fontsize)
 
+# producer surplus
+axs[0,1].plot(num_firms_array_extend, ps_allfixed(default_elast_id,default_nest_id), color="black", lw=lw, alpha=alpha)
+#axs[0,1].plot(num_firms_array_extend, ps_allfixed(default_elast_id,default_nest_id) + 1.96 * ps_allfixed_se(default_elast_id,default_nest_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+#axs[0,1].plot(num_firms_array_extend, ps_allfixed(default_elast_id,default_nest_id) - 1.96 * ps_allfixed_se(default_elast_id,default_nest_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+axs[0,1].axvline(x=num_firms_array_extend[np.nanargmax(ps_allfixed(default_elast_id,default_nest_id))], color="black", linestyle="--", alpha=0.25)
+axs[0,1].set_xlabel("number of firms", fontsize=x_fontsize)
+axs[0,1].set_ylabel("\u20ac / person", fontsize=y_fontsize)
+axs[0,1].set_title("producer surplus", fontsize=title_fontsize)
+
+# total surplus
+axs[0,2].plot(num_firms_array_extend, ts_allfixed(default_elast_id,default_nest_id), color="black", lw=lw, alpha=alpha)
+#axs[0,2].plot(num_firms_array_extend, ts_allfixed(default_elast_id,default_nest_id) + 1.96 * ts_allfixed_se(default_elast_id,default_nest_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+#axs[0,2].plot(num_firms_array_extend, ts_allfixed(default_elast_id,default_nest_id) - 1.96 * ts_allfixed_se(default_elast_id,default_nest_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+axs[0,2].axvline(x=num_firms_array_extend[np.nanargmax(ts_allfixed(default_elast_id,default_nest_id))], color="black", linestyle="--", alpha=0.25)
+axs[0,2].set_xlabel("number of firms", fontsize=x_fontsize)
+axs[0,2].set_ylabel("\u20ac / person", fontsize=y_fontsize)
+axs[0,2].set_title("total surplus", fontsize=title_fontsize)
+
+# Set axis limits
+min_y_cs = np.nanmin(cs_allfixed(default_elast_id,default_nest_id)[1:]) # don't include monopoly case
+max_y_cs = np.nanmax(cs_allfixed(default_elast_id,default_nest_id)[1:])
+min_y_ps = np.nanmin(ps_allfixed(default_elast_id,default_nest_id)[1:])
+max_y_ps = np.nanmax(ps_allfixed(default_elast_id,default_nest_id)[1:])
+min_y_ts = np.nanmin(ts_allfixed(default_elast_id,default_nest_id)[1:])
+max_y_ts = np.nanmax(ts_allfixed(default_elast_id,default_nest_id)[1:])
+diff_cs = max_y_cs - min_y_cs
+diff_ps = max_y_ps - min_y_ps
+diff_ts = max_y_ts - min_y_ts
+axs[0,0].set_ylim((min_y_cs - margin * diff_cs, max_y_cs + margin * diff_cs))
+axs[0,1].set_ylim((min_y_ps - margin * diff_ps, max_y_ps + margin * diff_ps))
+axs[0,2].set_ylim((min_y_ts - margin * diff_ts, max_y_ts + margin * diff_ts))
+for i in range(3):
+    axs[0,i].set_xticks(num_firms_array_extend)
+        
+plt.tight_layout()
+
+if save_:
+    plt.savefig(f"{paths.graphs_path}counterfactual_welfare_1gb10gb_allfixed.pdf", bbox_inches = "tight", transparent=True)
+    
+if print_:
+    plt.show()
+    
 # %%
 # Consumer surplus by type for number of firms
 
@@ -887,11 +1036,53 @@ if save_:
     
 if print_:
     plt.show()
+    
+# %%
+# Consumer surplus by type for number of firms - all fixed
 
+fig, axs = plt.subplots(1, 3, figsize=(9.0,4.0), sharex=True, squeeze=False)
 
+axs[0,0].plot(num_firms_array_extend, cs_by_type_allfixed(default_elast_id,default_nest_id)[:,0], color="black", lw=lw, alpha=alpha)
+#axs[i,0].plot(num_firms_array_extend, cs_by_type_allfixed(default_elast_id,default_nest_id)[:,0] + 1.96 * cs_by_type_allfixed_se(default_elast_id,default_nest_id)[:,0], color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+#axs[i,0].plot(num_firms_array_extend, cs_by_type_allfixed(default_elast_id,default_nest_id)[:,0] - 1.96 * cs_by_type_allfixed_se(default_elast_id,default_nest_id)[:,0], color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+axs[0,0].axvline(x=num_firms_array_extend[np.argmax(cs_by_type_allfixed(default_elast_id,default_nest_id)[:,0])], color="black", linestyle="--", alpha=0.25)
+axs[0,0].set_xlabel("number of firms", fontsize=x_fontsize)
+axs[0,0].set_ylabel("consumer surplus (\u20ac / person)", fontsize=y_fontsize)
+axs[0,0].set_title("10th percentile", fontsize=title_fontsize)
 
+axs[0,1].plot(num_firms_array_extend, cs_by_type_allfixed(default_elast_id,default_nest_id)[:,4], color="black", lw=lw, alpha=alpha)
+#axs[i,1].plot(num_firms_array_extend, cs_by_type_allfixed(default_elast_id,default_nest_id)[:,4] + 1.96 * cs_by_type_allfixed_se(default_elast_id,default_nest_id)[:,4], color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+#axs[i,1].plot(num_firms_array_extend, cs_by_type_allfixed(default_elast_id,default_nest_id)[:,4] - 1.96 * cs_by_type_allfixed_se(default_elast_id,default_nest_id)[:,4], color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+axs[0,1].axvline(x=num_firms_array_extend[np.argmax(cs_by_type_allfixed(default_elast_id,default_nest_id)[:,4])], color="black", linestyle="--", alpha=0.25)
+axs[0,1].set_xlabel("number of firms", fontsize=x_fontsize)
+axs[0,1].set_ylabel("consumer surplus (\u20ac / person)", fontsize=y_fontsize)
+axs[0,1].set_title("50th percentile", fontsize=title_fontsize)
 
+axs[0,2].plot(num_firms_array_extend, cs_by_type_allfixed(default_elast_id,default_nest_id)[:,8], color="black", lw=lw, alpha=alpha)
+#axs[i,2].plot(num_firms_array_extend, cs_by_type_allfixed(default_elast_id,default_nest_id)[:,8] + 1.96 * cs_by_type_allfixed_se(default_elast_id,default_nest_id)[:,8], color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+#axs[i,2].plot(num_firms_array_extend, cs_by_type_allfixed(default_elast_id,default_nest_id)[:,8] - 1.96 * cs_by_type_allfixed_se(default_elast_id,default_nest_id)[:,8], color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+axs[0,2].axvline(x=num_firms_array_extend[np.argmax(cs_by_type_allfixed(default_elast_id,default_nest_id)[:,8])], color="black", linestyle="--", alpha=0.25)
+axs[0,2].set_xlabel("number of firms", fontsize=x_fontsize)
+axs[0,2].set_ylabel("consumer surplus (\u20ac / person)", fontsize=y_fontsize)
+axs[0,2].set_title("90th percentile", fontsize=title_fontsize)
+    
+# Set axis limits
+for i, income_idx in enumerate([0,4,8]):
+    margin = 0.1
+    min_cs = np.min(cs_by_type_allfixed(default_elast_id,default_nest_id)[1:,income_idx])
+    max_cs = np.max(cs_by_type_allfixed(default_elast_id,default_nest_id)[1:,income_idx])
+    diff = max_cs - min_cs
+    axs[0,i].set_ylim((min_cs - margin * diff, max_cs + margin * diff)) # don't include the monopoly case
+    axs[0,i].set_xticks(num_firms_array_extend)
+        
+plt.tight_layout()
 
+if save_:
+    plt.savefig(f"{paths.graphs_path}counterfactual_cs_by_income_1gb10gb_allfixed.pdf", bbox_inches = "tight", transparent=True)
+    
+if print_:
+    plt.show()
+    
 # %%
 # Endogenous Variables in "Short-run" Simulations
 
@@ -921,10 +1112,7 @@ if save_:
     create_file(f"{paths.tables_path}counterfactual_shortrun_variables_preferredspecification.tex", to_tex)
 if print_:
     print(to_tex)
-
-
-
-
+    
 # %%
 # Welfare in "Short-run" simulations
 
@@ -953,10 +1141,7 @@ if save_:
     create_file(f"{paths.tables_path}counterfactual_shortrun_welfare_preferredspecification.tex", to_tex)
 if print_:
     print(to_tex)
-
-
-
-
+    
 # %%
 # CS by Income Level in "Short-run" Simulations
 
@@ -989,10 +1174,7 @@ if save_:
     create_file(f"{paths.tables_path}counterfactual_shortrun_cs_by_income_preferredspecification.tex", to_tex)
 if print_:
     print(to_tex)
-
-
-
-
+    
 # %%
 # "Add Free" endogenous variables (all fixed)
 
@@ -1059,10 +1241,7 @@ if save_:
 
 if print_:
     plt.show()
-
-
-
-
+    
 # %%
 # "Add Free" endogenous variables (all bw)
 
@@ -1125,10 +1304,7 @@ if save_:
 
 if print_:
     plt.show()
-
-
-
-
+    
 # %%
 # Welfare for "Add Free" (all fixed)
 
@@ -1183,10 +1359,7 @@ if save_:
 
 if print_:
     plt.show()
-
-
-
-
+    
 # %%
 # Welfare for "Add Free" (all bw)
 
@@ -1237,63 +1410,57 @@ if save_:
 
 if print_:
     plt.show()
+    
+# # %%
+# # Consumer surplus by type for "Add Free" (all fixed)
 
+# fig, axs = plt.subplots(1, 3, figsize=(9.0,4.0), squeeze=False)
 
+# x_fontsize = "large"
+# y_fontsize = "large"
+# title_fontsize = "x-large"
 
+# x_pos = [i for i in range(2)]
+# x_ticklabels = ["$3$ firms, $\\frac{4}{3}$ b", "$4$ firms, b"]
 
-# %%
-# Consumer surplus by type for "Add Free" (all fixed)
+# axs[0,0].bar(x_pos, cs_by_type_free_allfixed(default_elast_id,default_nest_id)[:,0], yerr=1.96*cs_by_type_free_allfixed_se(default_elast_id,default_nest_id)[:,0], capsize=7.0, color="black", alpha=0.8 * alpha)
+# axs[0,0].set_xticks(x_pos)
+# axs[0,0].set_xticklabels(x_ticklabels, rotation=60, ha="right", fontsize=x_fontsize)
+# axs[0,0].set_ylabel("$\\Delta$ CS (in \u20ac / person)", fontsize=y_fontsize)
+# max_cs = np.max(cs_by_type_free_allfixed(default_elast_id,default_nest_id)[:,0] + 1.96 * cs_by_type_free_allfixed_se(default_elast_id,default_nest_id)[:,0])
+# min_cs = np.min(cs_by_type_free_allfixed(default_elast_id,default_nest_id)[:,0] - 1.96 * cs_by_type_free_allfixed_se(default_elast_id,default_nest_id)[:,0])
+# diff = np.maximum(max_cs, 0.0) - np.minimum(min_cs, 0.0)
+# axs[0,0].set_ylim((np.minimum(min_cs - margin * diff, 0.0), np.maximum(max_cs + margin * diff, 0.0)))
+# axs[0,0].set_title("10th percentile", fontsize=title_fontsize)
 
-fig, axs = plt.subplots(1, 3, figsize=(9.0,4.0), squeeze=False)
+# axs[0,1].bar(x_pos, cs_by_type_free_allfixed(default_elast_id,default_nest_id)[:,4], yerr=1.96*cs_by_type_free_allfixed_se(default_elast_id,default_nest_id)[:,4], capsize=7.0, color="black", alpha=0.8 * alpha)
+# axs[0,1].set_xticks(x_pos)
+# axs[0,1].set_xticklabels(x_ticklabels, rotation=60, ha="right", fontsize=x_fontsize)
+# axs[0,1].set_ylabel("$\\Delta$ CS (in \u20ac / person)", fontsize=y_fontsize)
+# max_cs = np.max(cs_by_type_free_allfixed(default_elast_id,default_nest_id)[:,4] + 1.96 * cs_by_type_free_allfixed_se(default_elast_id,default_nest_id)[:,4])
+# min_cs = np.min(cs_by_type_free_allfixed(default_elast_id,default_nest_id)[:,4] - 1.96 * cs_by_type_free_allfixed_se(default_elast_id,default_nest_id)[:,4])
+# diff = np.maximum(max_cs, 0.0) - np.minimum(min_cs, 0.0)
+# axs[0,1].set_ylim((np.minimum(min_cs - margin * diff, 0.0), np.maximum(max_cs + margin * diff, 0.0)))
+# axs[0,1].set_title("50th percentile", fontsize=title_fontsize)
 
-x_fontsize = "large"
-y_fontsize = "large"
-title_fontsize = "x-large"
-
-x_pos = [i for i in range(2)]
-x_ticklabels = ["$3$ firms, $\\frac{4}{3}$ b", "$4$ firms, b"]
-
-axs[0,0].bar(x_pos, cs_by_type_free_allfixed(default_elast_id,default_nest_id)[:,0], yerr=1.96*cs_by_type_free_allfixed_se(default_elast_id,default_nest_id)[:,0], capsize=7.0, color="black", alpha=0.8 * alpha)
-axs[0,0].set_xticks(x_pos)
-axs[0,0].set_xticklabels(x_ticklabels, rotation=60, ha="right", fontsize=x_fontsize)
-axs[0,0].set_ylabel("$\\Delta$ CS (in \u20ac / person)", fontsize=y_fontsize)
-max_cs = np.max(cs_by_type_free_allfixed(default_elast_id,default_nest_id)[:,0] + 1.96 * cs_by_type_free_allfixed_se(default_elast_id,default_nest_id)[:,0])
-min_cs = np.min(cs_by_type_free_allfixed(default_elast_id,default_nest_id)[:,0] - 1.96 * cs_by_type_free_allfixed_se(default_elast_id,default_nest_id)[:,0])
-diff = np.maximum(max_cs, 0.0) - np.minimum(min_cs, 0.0)
-axs[0,0].set_ylim((np.minimum(min_cs - margin * diff, 0.0), np.maximum(max_cs + margin * diff, 0.0)))
-axs[0,0].set_title("10th percentile", fontsize=title_fontsize)
-
-axs[0,1].bar(x_pos, cs_by_type_free_allfixed(default_elast_id,default_nest_id)[:,4], yerr=1.96*cs_by_type_free_allfixed_se(default_elast_id,default_nest_id)[:,4], capsize=7.0, color="black", alpha=0.8 * alpha)
-axs[0,1].set_xticks(x_pos)
-axs[0,1].set_xticklabels(x_ticklabels, rotation=60, ha="right", fontsize=x_fontsize)
-axs[0,1].set_ylabel("$\\Delta$ CS (in \u20ac / person)", fontsize=y_fontsize)
-max_cs = np.max(cs_by_type_free_allfixed(default_elast_id,default_nest_id)[:,4] + 1.96 * cs_by_type_free_allfixed_se(default_elast_id,default_nest_id)[:,4])
-min_cs = np.min(cs_by_type_free_allfixed(default_elast_id,default_nest_id)[:,4] - 1.96 * cs_by_type_free_allfixed_se(default_elast_id,default_nest_id)[:,4])
-diff = np.maximum(max_cs, 0.0) - np.minimum(min_cs, 0.0)
-axs[0,1].set_ylim((np.minimum(min_cs - margin * diff, 0.0), np.maximum(max_cs + margin * diff, 0.0)))
-axs[0,1].set_title("50th percentile", fontsize=title_fontsize)
-
-axs[0,2].bar(x_pos, cs_by_type_free_allfixed(default_elast_id,default_nest_id)[:,8], yerr=1.96*cs_by_type_free_allfixed_se(default_elast_id,default_nest_id)[:,8], capsize=7.0, color="black", alpha=0.8 * alpha)
-axs[0,2].set_xticks(x_pos)
-axs[0,2].set_xticklabels(x_ticklabels, rotation=60, ha="right", fontsize=x_fontsize)
-axs[0,2].set_ylabel("$\\Delta$ CS (in \u20ac / person)", fontsize=y_fontsize)
-max_cs = np.max(cs_by_type_free_allfixed(default_elast_id,default_nest_id)[:,8] + 1.96 * cs_by_type_free_allfixed_se(default_elast_id,default_nest_id)[:,8])
-min_cs = np.min(cs_by_type_free_allfixed(default_elast_id,default_nest_id)[:,8] - 1.96 * cs_by_type_free_allfixed_se(default_elast_id,default_nest_id)[:,8])
-diff = np.maximum(max_cs, 0.0) - np.minimum(min_cs, 0.0)
-axs[0,2].ticklabel_format(style="plain", useOffset=False, axis="y")
-axs[0,2].set_ylim((np.minimum(min_cs - margin * diff, 0.0), np.maximum(max_cs + margin * diff, 0.0)))
-axs[0,2].set_title("90th percentile", fontsize=title_fontsize)
+# axs[0,2].bar(x_pos, cs_by_type_free_allfixed(default_elast_id,default_nest_id)[:,8], yerr=1.96*cs_by_type_free_allfixed_se(default_elast_id,default_nest_id)[:,8], capsize=7.0, color="black", alpha=0.8 * alpha)
+# axs[0,2].set_xticks(x_pos)
+# axs[0,2].set_xticklabels(x_ticklabels, rotation=60, ha="right", fontsize=x_fontsize)
+# axs[0,2].set_ylabel("$\\Delta$ CS (in \u20ac / person)", fontsize=y_fontsize)
+# max_cs = np.max(cs_by_type_free_allfixed(default_elast_id,default_nest_id)[:,8] + 1.96 * cs_by_type_free_allfixed_se(default_elast_id,default_nest_id)[:,8])
+# min_cs = np.min(cs_by_type_free_allfixed(default_elast_id,default_nest_id)[:,8] - 1.96 * cs_by_type_free_allfixed_se(default_elast_id,default_nest_id)[:,8])
+# diff = np.maximum(max_cs, 0.0) - np.minimum(min_cs, 0.0)
+# axs[0,2].ticklabel_format(style="plain", useOffset=False, axis="y")
+# axs[0,2].set_ylim((np.minimum(min_cs - margin * diff, 0.0), np.maximum(max_cs + margin * diff, 0.0)))
+# axs[0,2].set_title("90th percentile", fontsize=title_fontsize)
         
-plt.tight_layout()
+# plt.tight_layout()
 
-if save_:
-    plt.savefig(f"{paths.graphs_path}counterfactual_free_cs_by_income_allfixed_1gb10gb.pdf", bbox_inches = "tight", transparent=True)
+# if save_:
+#     plt.savefig(f"{paths.graphs_path}counterfactual_free_cs_by_income_allfixed_1gb10gb.pdf", bbox_inches = "tight", transparent=True)
 
-if print_:
-    plt.show()
-
-
-
+# if print_:
+#     plt.show()
 
 # %%
 # Consumer surplus by type for "Add Free" (all bw)
@@ -1341,10 +1508,7 @@ if save_:
 
 if print_:
     plt.show()
-
-
-
-
+    
 # %%
 # Endogenous variables - number of firms - by density
 
@@ -1468,10 +1632,7 @@ if save_:
 
 if print_:
     plt.show()
-
-
-
-
+    
 # %%
 # Welfare for number of firms by density
 
@@ -1515,9 +1676,9 @@ axs[0,2].set_title("total surplus", fontsize=title_fontsize)
 # margin_ts = 1.0 - np.sort(np.concatenate(tuple([normalize_var(ts_dens(default_elast_id,default_nest_id)[:,densities_argsort[dens_use][i]])])))[-6]
 # axs[0,0].set_ylim((1.0 - margin_cs, 1.0 + 0.33 * margin_cs))
 # axs[0,2].set_ylim((1.0 - margin_ts, 1.0 + 0.33 * margin_ts))
-axs[0,0].set_ylim((35.25, 35.75))
-axs[0,1].set_ylim((-20.0, -18.0))
-axs[0,2].set_ylim((16.0, 17.0))
+axs[0,0].set_ylim((28.5, 29.5))
+axs[0,1].set_ylim((-16.0, -14.0))
+axs[0,2].set_ylim((13.0, 14.5))
 
 for i in range(3):
     axs[0,i].set_xticks(num_firms_array_extend)
@@ -1542,10 +1703,7 @@ if save_:
     
 if print_:
     plt.show()
-
-
-
-
+    
 # %%
 # Endogenous variables - number of firms - by bandwidth
 
@@ -1658,10 +1816,7 @@ if save_:
 
 if print_:
     plt.show()
-
-
-
-
+    
 # %%
 # Welfare for number of firms by bandwidth
 
@@ -1726,683 +1881,8 @@ if save_:
 
 if print_:
     plt.show()
-
-
-
-
+    
 # %%
-# Endogenous variables for all imputations
-
-fig, axs = plt.subplots(2, 2, figsize=(11.0 * 1.5, 8.0 * 1.5), squeeze=False)
-
-# Create axis indices and labels
-num_x_axis_pts = elast_ids_sparse.shape[0] * nest_ids_sparse.shape[0] + (elast_ids_sparse.shape[0] - 1)
-x_pos = [i for i in range(num_x_axis_pts)]
-x_axis_idx = np.arange(elast_ids_sparse.shape[0] * nest_ids_sparse.shape[0] + (elast_ids_sparse.shape[0] - 1))
-nest_idx = x_axis_idx % (nest_ids_sparse.shape[0] + 1)
-x_ticklabels_nest = np.concatenate((sigmas, np.ones(1) * np.nan))[nest_idx]
-elast_idx = x_axis_idx // (nest_ids_sparse.shape[0] + 1)
-elast_idx_last_idx = np.unique(elast_idx, return_index=True)[1] - 1
-elast_idx_last_idx = elast_idx_last_idx[elast_idx_last_idx >= 0]
-elast_idx[elast_idx_last_idx] = np.max(elast_idx) + 1
-x_ticklabels_elast = np.concatenate((avg_price_elasts, np.ones(1) * np.nan))[elast_idx]
-use_x_pos = ~np.isnan(x_ticklabels_nest[np.array(x_pos)])
-pos_preferred = np.array(x_pos)[(elast_idx == default_elast_id) & (nest_idx == default_nest_id)][0]
-
-# Create position indices / labels for graph
-x_ticklabels_elast_expand = np.concatenate((np.ones(1) * np.nan, x_ticklabels_elast, np.ones(1) * np.nan))
-x_pos_expand = np.arange(-1, num_x_axis_pts + 1)
-pos_begin = x_pos_expand[:-1][np.isnan(x_ticklabels_elast_expand[:-1])]
-pos_end = x_pos_expand[1:][np.isnan(x_ticklabels_elast_expand[1:])]
-pos_lines = np.unique(np.concatenate((pos_begin, pos_end)))[1:-1]
-pos_begin = pos_begin + 1 - 0.5 # correct position, then want to begin a little to the left
-pos_end = pos_end - 1 + 0.5 # correct position, then want to end a little to the right
-elasts_vals_ = [f"E = {elast_}" for i, elast_ in enumerate(avg_price_elasts[elast_ids_sparse])]
-
-# Populate arrays
-p_stars_1gb_ = np.zeros(num_x_axis_pts)
-p_stars_1gb_se_ = np.zeros(num_x_axis_pts)
-p_stars_10gb_ = np.zeros(num_x_axis_pts)
-p_stars_10gb_se_ = np.zeros(num_x_axis_pts)
-num_stations_per_firm_stars_ = np.zeros(num_x_axis_pts)
-num_stations_per_firm_stars_se_ = np.zeros(num_x_axis_pts)
-q_stars_ = np.zeros(num_x_axis_pts)
-q_stars_se_ = np.zeros(num_x_axis_pts)
-for i in range(num_x_axis_pts):
-    if (nest_idx[i] < nest_ids_sparse.shape[0]) and (elast_idx[i] < elast_ids_sparse.shape[0]):
-        p_stars_1gb_[i] = p_stars(elast_ids_sparse[elast_idx[i]],nest_ids_sparse[nest_idx[i]])[default_num_firm_idx,0]
-        p_stars_1gb_se_[i] = p_stars_se(elast_ids_sparse[elast_idx[i]],nest_ids_sparse[nest_idx[i]])[default_num_firm_idx,0]
-        
-        p_stars_10gb_[i] = p_stars(elast_ids_sparse[elast_idx[i]],nest_ids_sparse[nest_idx[i]])[default_num_firm_idx,1]
-        p_stars_10gb_se_[i] = p_stars_se(elast_ids_sparse[elast_idx[i]],nest_ids_sparse[nest_idx[i]])[default_num_firm_idx,1]
-        
-        num_stations_per_firm_stars_[i] = num_stations_per_firm_stars(elast_ids_sparse[elast_idx[i]],nest_ids_sparse[nest_idx[i]])[default_num_firm_idx]
-        num_stations_per_firm_stars_se_[i] = num_stations_per_firm_stars_se(elast_ids_sparse[elast_idx[i]],nest_ids_sparse[nest_idx[i]])[default_num_firm_idx]
-        
-        q_stars_[i] = q_stars(elast_ids_sparse[elast_idx[i]],nest_ids_sparse[nest_idx[i]])[default_num_firm_idx]
-        q_stars_se_[i] = q_stars_se(elast_ids_sparse[elast_idx[i]],nest_ids_sparse[nest_idx[i]])[default_num_firm_idx]
-    else:
-        p_stars_1gb_[i] = np.nan
-        p_stars_1gb_se_[i] = np.nan
-        
-        p_stars_10gb_[i] = np.nan
-        p_stars_10gb_se_[i] = np.nan
-        
-        num_stations_per_firm_stars_[i] = np.nan
-        num_stations_per_firm_stars_se_[i] = np.nan
-        
-        q_stars_[i] = np.nan
-        q_stars_se_[i] = np.nan
-        
-axs[0,0].bar(x_pos, p_stars_1gb_, yerr=p_stars_1gb_se_ * 1.96, capsize=7.0, color="black", alpha=0.8 * alpha)
-axs[0,0].set_ylabel("$p_{j}^{*}$ (in \u20ac)", fontsize="x-large")
-axs[0,0].set_title("1$\,$000 MB plan prices", fontsize="xx-large")
-
-axs[0,1].bar(x_pos, p_stars_10gb_, yerr=p_stars_10gb_se_ * 1.96, capsize=7.0, color="black", alpha=0.8 * alpha)
-axs[0,1].set_ylabel("$p_{j}^{*}$ (in \u20ac)", fontsize="x-large")
-axs[0,1].set_title("10$\,$000 MB plan prices", fontsize="xx-large")
-
-axs[1,0].bar(x_pos, num_stations_per_firm_stars_ * 1000.0, yerr=num_stations_per_firm_stars_se_ * 1.96 * 1000.0, capsize=7.0, color="black", alpha=0.8 * alpha)
-axs[1,0].set_ylabel("number of stations (per 1000 people)", fontsize="x-large")
-axs[1,0].set_title("number of stations / firm", fontsize="xx-large")
-
-axs[1,1].bar(x_pos, q_stars_, yerr=q_stars_se_ * 1.96, capsize=7.0, color="black", alpha=0.8 * alpha)
-axs[1,1].set_ylabel("$Q_{f}^{*}$ (in Mbps)", fontsize="x-large")
-axs[1,1].set_title("download speeds", fontsize="xx-large")
-
-# Set y axes
-margin = 0.1
-min_y_00 = np.nanmin(p_stars_1gb_ - 1.96 * p_stars_1gb_se_)
-max_y_00 = np.nanmax(p_stars_1gb_ + 1.96 * p_stars_1gb_se_)
-diff_y_00 = max_y_00 - min_y_00
-min_y_01 = np.nanmin(p_stars_10gb_ - 1.96 * p_stars_10gb_se_)
-max_y_01 = np.nanmax(p_stars_10gb_ + 1.96 * p_stars_10gb_se_)
-diff_y_01 = max_y_01 - min_y_01
-min_y_10 = np.nanmin(num_stations_per_firm_stars_ - 1.96 * num_stations_per_firm_stars_se_) * 1000.0
-max_y_10 = np.nanmax(num_stations_per_firm_stars_ + 1.96 * num_stations_per_firm_stars_se_) * 1000.0
-diff_y_10 = max_y_10 - min_y_10
-min_y_11 = np.nanmin(q_stars_ - 1.96 * q_stars_se_)
-max_y_11 = np.nanmax(q_stars_ + 1.96 * q_stars_se_)
-diff_y_11 = max_y_11 - min_y_11
-axs[0,0].set_ylim((min_y_00 - margin * diff_y_00, max_y_00 + margin * diff_y_00))
-axs[0,1].set_ylim((min_y_01 - margin * diff_y_01, max_y_01 + margin * diff_y_01))
-axs[1,0].set_ylim((min_y_10 - margin * diff_y_10, max_y_10 + margin * diff_y_10))
-axs[1,1].set_ylim((min_y_11 - margin * diff_y_11, max_y_11 + margin * diff_y_11))
-
-# Operations to all subplots
-for i in range(2):
-    for j in range(2):
-        # Set axis labels
-        axs[i,j].set_xticks(np.array(x_pos)[use_x_pos].tolist())
-        axs[i,j].set_xticklabels(x_ticklabels_nest[use_x_pos].tolist())
-        axs[i,j].set_xlabel("")
-#         axs[i,j].get_xticklabels()[pos_preferred - 1].set_color("white")
-#         axs[i,j].get_xticklabels()[pos_preferred - 1].set_fontsize("x-large")
-        axs[i,j].get_xticklabels()[pos_preferred - 1].set_weight("bold")
-#         axs[i,j].get_xticklabels()[pos_preferred - 1].set_bbox(dict(facecolor="black", alpha=0.25))
-        axs[i,j].vlines(pos_lines, 0, -0.1, color="black", lw=0.8, clip_on=False, transform=axs[i,j].get_xaxis_transform())
-        for elast_, pos0, pos1 in zip(elasts_vals_, pos_begin, pos_end):
-            text_add = axs[i,j].text((pos0 + pos1) / 2, -0.12, elast_, ha="center", clip_on=False, transform=axs[i,j].get_xaxis_transform(), fontsize="x-large")
-            if elast_ == f"E = {avg_price_elasts[default_elast_id]}":
-                text_add.set_weight("bold")
-        
-plt.tight_layout()
-
-plt.subplots_adjust(hspace = 0.25)
-
-if save_:
-    plt.savefig(f"{paths.graphs_path}counterfactual_variables_imputations.pdf", bbox_inches="tight", transparent=True)
-
-if print_:
-    plt.show()
-    
-if save_:
-    create_file(f"{paths.stats_path}p_star_low_elastic.tex", "{:.2f}".format(p_stars(0,default_nest_id)[default_num_firm_idx,:][0]))
-    create_file(f"{paths.stats_path}p_star_low_inelastic.tex", "{:.2f}".format(p_stars(avg_price_elasts.shape[0]-1,default_nest_id)[default_num_firm_idx,:][0]))
-    create_file(f"{paths.stats_path}p_star_high_elastic.tex", "{:.2f}".format(p_stars(0,default_nest_id)[default_num_firm_idx,:][1]))
-    create_file(f"{paths.stats_path}p_star_high_inelastic.tex", "{:.2f}".format(p_stars(avg_price_elasts.shape[0]-1,default_nest_id)[default_num_firm_idx,:][1]))
-
-
-
-
-# %%
-# Endogenous variables - number of firms - by elasticity
-
-fig, axs = plt.subplots(2, 3, figsize=(12.0, 8.0), squeeze=False)
-
-elast_color_p = "Blues" # plt.rcParams['axes.prop_cycle'].by_key()['color'][0]
-elast_color_R = "Reds"
-elast_color_Rtot = "Reds"
-elast_color_q = "Greens"
-elast_color_pl = "Greens"
-alphas_elast = np.linspace(0.25, 0.75, elast_ids_sparse.shape[0])
-
-elast_legend = [f"E={avg_price_elasts[elast_id]}" for i, elast_id in enumerate(elast_ids_sparse)]
-
-# dlim = 1,000 prices
-for i, elast_id in enumerate(elast_ids_sparse):
-    axs[0,0].plot(num_firms_array, p_stars(elast_id,default_nest_id)[:,0], color=cm.get_cmap(elast_color_p)(alphas_elast[i]), lw=lw, label=elast_legend[i])
-axs[0,0].set_xlabel("number of firms")
-axs[0,0].set_ylabel("$p_{j}^{*}$ (in \u20ac)")
-axs[0,0].set_title("1$\,$000 MB plan prices", fontsize=title_fontsize)
-
-# dlim = 10,000 prices
-for i, elast_id in enumerate(elast_ids_sparse):
-    axs[0,1].plot(num_firms_array, p_stars(elast_id,default_nest_id)[:,1], color=cm.get_cmap(elast_color_p)(alphas_elast[i]), lw=lw, label=elast_legend[i])
-axs[0,1].set_xlabel("number of firms")
-axs[0,1].set_ylabel("$p_{j}^{*}$ (in \u20ac)")
-axs[0,1].set_title("10$\,$000 MB plan prices", fontsize=title_fontsize)
-
-# radius
-for i, elast_id in enumerate(elast_ids_sparse):
-    axs[0,2].plot(num_firms_array, num_stations_per_firm_stars(elast_id,default_nest_id) * 1000.0, color=cm.get_cmap(elast_color_R)(alphas_elast[i]), lw=lw, label=elast_legend[i])
-axs[0,2].set_xlabel("number of firms")
-axs[0,2].set_ylabel("number of stations\n(per 1000 people)")
-axs[0,2].set_title("number of stations / firm", fontsize=title_fontsize)
-
-# total number of stations
-for i, elast_id in enumerate(elast_ids_sparse):
-    axs[1,0].plot(num_firms_array, num_stations_stars(elast_id,default_nest_id) * 1000.0, color=cm.get_cmap(elast_color_Rtot)(alphas_elast[i]), lw=lw, label=elast_legend[i])
-axs[1,0].set_xlabel("number of firms")
-axs[1,0].set_ylabel("number of stations\n(per 1000 people)")
-axs[1,0].set_title("total number of stations", fontsize=title_fontsize)
-
-# average path loss
-# for i, elast_id in enumerate(elast_ids_sparse):
-#     axs[1,1].plot(num_firms_array, avg_path_losses(elast_id,default_nest_id), color=cm.get_cmap(elast_color_pl)(alphas_elast[i]), lw=lw, label=elast_legend[i])
-# axs[1,1].set_xlabel("number of firms")
-# axs[1,1].set_ylabel("dB")
-# axs[1,1].set_title("average path loss")
-for i, elast_id in enumerate(elast_ids_sparse):
-    axs[1,1].plot(num_firms_array, ccs_per_bw(elast_id,default_nest_id), color=cm.get_cmap(elast_color_pl)(alphas_elast[i]), lw=lw, label=elast_legend[i])
-axs[1,1].set_xlabel("number of firms")
-axs[1,1].set_ylabel("Mbps / MHz")
-axs[1,1].set_title("channel capacity / unit bw", fontsize=title_fontsize)
-
-# download speeds
-for i, elast_id in enumerate(elast_ids_sparse):
-    axs[1,2].plot(num_firms_array, q_stars(elast_id,default_nest_id), color=cm.get_cmap(elast_color_q)(alphas_elast[i]), lw=lw, label=elast_legend[i])
-axs[1,2].set_xlabel("number of firms")
-axs[1,2].set_ylabel("$Q_{f}^{*}$ (in Mbps)")
-axs[1,2].set_title("download speeds", fontsize=title_fontsize)
-
-# Set axis limits
-min_y_p = np.nanmin(np.concatenate(tuple([p_stars(elast_id,default_nest_id)[1:,:] for i, elast_id in enumerate(elast_ids_sparse)])))
-max_y_p = np.nanmax(np.concatenate(tuple([p_stars(elast_id,default_nest_id)[1:,:] for i, elast_id in enumerate(elast_ids_sparse)])))
-min_y_num_stations_per_firm = np.nanmin(np.concatenate(tuple([num_stations_per_firm_stars(elast_id,default_nest_id) for i, elast_id in enumerate(elast_ids_sparse)]))) * 1000.0
-max_y_num_stations_per_firm = np.nanmax(np.concatenate(tuple([num_stations_per_firm_stars(elast_id,default_nest_id) for i, elast_id in enumerate(elast_ids_sparse)]))) * 1000.0
-min_y_num_stations = np.nanmin(np.concatenate(tuple([num_stations_stars(elast_id,default_nest_id) for i, elast_id in enumerate(elast_ids_sparse)]))) * 1000.0
-max_y_num_stations = np.nanmax(np.concatenate(tuple([num_stations_stars(elast_id,default_nest_id) for i, elast_id in enumerate(elast_ids_sparse)]))) * 1000.0
-min_y_q = np.nanmin(np.concatenate(tuple([q_stars(elast_id,default_nest_id) for i, elast_id in enumerate(elast_ids_sparse)])))
-max_y_q = np.nanmax(np.concatenate(tuple([q_stars(elast_id,default_nest_id) for i, elast_id in enumerate(elast_ids_sparse)])))
-# min_y_pl = np.nanmin(np.concatenate(tuple([avg_path_losses(elast_id,default_nest_id) for i, elast_id in enumerate(elast_ids_sparse)])))
-# max_y_pl = np.nanmax(np.concatenate(tuple([avg_path_losses(elast_id,default_nest_id) for i, elast_id in enumerate(elast_ids_sparse)])))
-diff_p = max_y_p - min_y_p
-diff_num_stations_per_firm = max_y_num_stations_per_firm - min_y_num_stations_per_firm
-diff_num_stations = max_y_num_stations - min_y_num_stations
-diff_q = max_y_q - min_y_q
-# diff_pl = max_y_pl - min_y_pl
-margin = 0.1
-for i in range(2):
-    axs[0,i].set_ylim((min_y_p - margin * diff_p, max_y_p + margin * diff_p))
-axs[0,2].set_ylim((min_y_num_stations_per_firm - margin * diff_num_stations_per_firm, max_y_num_stations_per_firm + margin * diff_num_stations_per_firm))
-axs[1,0].set_ylim((min_y_num_stations - margin * diff_num_stations, max_y_num_stations + margin * diff_num_stations))
-# axs[1,1].set_ylim((min_y_pl - margin * diff_pl, max_y_pl + margin * diff_pl))
-axs[1,2].set_ylim((min_y_q - margin * diff_q, max_y_q + margin * diff_q))
-for i in range(2):
-    for j in range(3):
-        axs[i,j].set_xticks(num_firms_array)
-        
-# Legends
-axs[0,0].legend(loc="best")
-axs[0,1].legend(loc="best")
-axs[0,2].legend(loc="best")
-axs[1,0].legend(loc="best")
-axs[1,1].legend(loc="best")
-axs[1,2].legend(loc="best")
-
-plt.tight_layout()
-
-if save_:
-    plt.savefig(f"{paths.graphs_path}counterfactual_elast_1gb10gb.pdf", bbox_inches = "tight", transparent=True)
-
-if print_:
-    plt.show()
-    
-
-
-
-
-# %%
-# Welfare for all imputations
-
-fig, axs = plt.subplots(3, 3, figsize=(8.0 * 1.5, 11.0 * 1.5), squeeze=False)
-
-sigmas_colors = ["Blues", "Reds", "Greens"]#plt.rcParams['axes.prop_cycle'].by_key()['color'][0]
-alphas_sigmas = np.linspace(0.25, 0.75, sigmas.shape[0])
-legend_loc = ["upper left", "upper right", "upper right"]
-
-normalize_var = lambda x: (x - np.mean(x[1:])) / np.std(x[1:])
-
-nest_legends = [f"$\\bf{{\\sigma = {sigmas[nest_id]}}}$" if nest_id == default_nest_id else f"$\\sigma = {sigmas[nest_id]}$" for nest_id in nest_ids_sparse]
-for i, elast in enumerate(elast_ids_sparse):
-    # Add lines by nesting parameter
-    for j, nest_param in enumerate(nest_ids_sparse):
-        axs[i,0].plot(num_firms_array_extend, normalize_var(cs(elast_ids_sparse[i],nest_ids_sparse[j])), color=cm.get_cmap(sigmas_colors[0])(alphas_sigmas[j]), lw=lw, label=nest_legends[j])
-        axs[i,0].axvline(x=num_firms_array_extend[np.nanargmax(cs(elast_ids_sparse[i],nest_ids_sparse[j]))], color=cm.get_cmap(sigmas_colors[0])(alphas_sigmas[j]), linestyle="--", label=None)
-        axs[i,1].plot(num_firms_array_extend, normalize_var(ps(elast_ids_sparse[i],nest_ids_sparse[j])), color=cm.get_cmap(sigmas_colors[1])(alphas_sigmas[j]), lw=lw, label=nest_legends[j])
-        if not np.isnan(ps(elast_ids_sparse[i],nest_ids_sparse[j])[0]): # b/c sometimes monopoly case doesn't work, don't want misleading result
-            axs[i,1].axvline(x=num_firms_array_extend[np.nanargmax(ps(elast_ids_sparse[i],nest_ids_sparse[j]))], color=cm.get_cmap(sigmas_colors[1])(alphas_sigmas[j]), linestyle="--", label=None)
-        axs[i,2].plot(num_firms_array_extend, normalize_var(ts(elast_ids_sparse[i],nest_ids_sparse[j])), color=cm.get_cmap(sigmas_colors[2])(alphas_sigmas[j]), lw=lw, label=nest_legends[j])
-        axs[i,2].axvline(x=num_firms_array_extend[np.nanargmax(ts(elast_ids_sparse[i],nest_ids_sparse[j]))], color=cm.get_cmap(sigmas_colors[2])(alphas_sigmas[j]), linestyle="--", label=None)
-    
-    # Label graphs
-    for j in range(3):
-        axs[i,j].set_xlabel("number of firms")
-        #axs[i,j].set_ylabel("\u20ac")
-        axs[i,j].set_yticks([])
-        axs[i,j].set_xticks(num_firms_array_extend)
-        axs[i,j].legend(loc=legend_loc[j])
-
-# Set axis limits
-for i, elast in enumerate(elast_ids_sparse):
-    min_y_cs = np.nanmin(np.concatenate(tuple([normalize_var(cs(elast_ids_sparse[i],nest_ids_sparse[j]))[1:] for j, nest_param in enumerate(nest_ids_sparse)]))) # don't include monopoly case
-    max_y_cs = np.nanmax(np.concatenate(tuple([normalize_var(cs(elast_ids_sparse[i],nest_ids_sparse[j]))[1:] for j, nest_param in enumerate(nest_ids_sparse)])))
-    min_y_ps = np.nanmin(np.concatenate(tuple([normalize_var(ps(elast_ids_sparse[i],nest_ids_sparse[j]))[1:] for j, nest_param in enumerate(nest_ids_sparse)])))
-    max_y_ps = np.nanmax(np.concatenate(tuple([normalize_var(ps(elast_ids_sparse[i],nest_ids_sparse[j]))[1:] for j, nest_param in enumerate(nest_ids_sparse)])))
-    min_y_ts = np.nanmin(np.concatenate(tuple([normalize_var(ts(elast_ids_sparse[i],nest_ids_sparse[j]))[1:] for j, nest_param in enumerate(nest_ids_sparse)])))
-    max_y_ts = np.nanmax(np.concatenate(tuple([normalize_var(ts(elast_ids_sparse[i],nest_ids_sparse[j]))[1:] for j, nest_param in enumerate(nest_ids_sparse)])))
-    diff_cs = max_y_cs - min_y_cs
-    diff_ps = max_y_ps - min_y_ps
-    diff_ts = max_y_ts - min_y_ts
-    axs[i,0].set_ylim((min_y_cs - margin * diff_cs, max_y_cs + margin * diff_cs))
-    axs[i,1].set_ylim((min_y_ps - margin * diff_ps, max_y_ps + margin * diff_ps))
-    axs[i,2].set_ylim((min_y_ts - margin * diff_ts, max_y_ts + margin * diff_ts))
-    
-cols = ["consumer surplus", "producer surplus", "total surplus"]
-rows = ["E = {}".format(elast) for elast in avg_price_elasts[elast_ids_sparse]]
-pad = 12
-for ax, col in zip(axs[0], cols):
-    ax.annotate(col, xy=(0.5, 1), xytext=(0, pad),
-                xycoords="axes fraction", textcoords="offset points",
-                size="xx-large", ha="center", va="baseline")
-for ax, row in zip(axs[:,0], rows):
-    row_title = ax.annotate(row, xy=(0, 0.5), xytext=(-ax.yaxis.labelpad - pad, 0),
-                            xycoords=ax.yaxis.label, textcoords="offset points",
-                            size="xx-large", ha="right", va="center")
-    if row == f"E = {avg_price_elasts[default_elast_id]}":
-        row_title.set_weight("bold")
-        
-plt.tight_layout()
-
-fig.subplots_adjust(left=0.15, top=0.95, hspace = 0.25)
-
-if save_:
-    plt.savefig(f"{paths.graphs_path}counterfactual_welfare_imputations.pdf", bbox_inches="tight", transparent=True)
-
-if print_:
-    plt.show()
-    
-if save_:
-    create_file(f"{paths.stats_path}elastic_val.tex", f"{avg_price_elasts[0]}")
-    create_file(f"{paths.stats_path}max_cs_elastic.tex", f"{num_firms_array_extend[np.nanargmax(cs(0,default_nest_id))]}")
-    create_file(f"{paths.stats_path}max_ts_elastic.tex", f"{num_firms_array_extend[np.nanargmax(ts(0,default_nest_id))]}")
-    create_file(f"{paths.stats_path}midelastic_val.tex", f"{avg_price_elasts[1]}")
-    create_file(f"{paths.stats_path}max_cs_midelastic.tex", f"{num_firms_array_extend[np.nanargmax(cs(1,default_nest_id))]}")
-    create_file(f"{paths.stats_path}max_ts_midelastic.tex", f"{num_firms_array_extend[np.nanargmax(ts(1,default_nest_id))]}")
-    create_file(f"{paths.stats_path}inelastic_val.tex", f"{avg_price_elasts[2]}")
-    create_file(f"{paths.stats_path}max_cs_inelastic.tex", f"{num_firms_array_extend[np.nanargmax(cs(2,default_nest_id))]}")
-    create_file(f"{paths.stats_path}max_ts_inelastic.tex", f"{num_firms_array_extend[np.nanargmax(ts(2,default_nest_id))]}")
-
-
-
-
-# %%
-# Bandwidth derivatives for all imputations
-
-fig, axs = plt.subplots(3, 2, figsize=(8.0 * 1.5, 11.0 * 1.5), squeeze=False)
-
-# Create axis indices and labels
-num_x_axis_pts = elast_ids_sparse.shape[0] * nest_ids_sparse.shape[0] + (elast_ids_sparse.shape[0] - 1)
-x_pos = [i for i in range(num_x_axis_pts)]
-x_axis_idx = np.arange(elast_ids_sparse.shape[0] * nest_ids_sparse.shape[0] + (elast_ids_sparse.shape[0] - 1))
-nest_idx = x_axis_idx % (nest_ids_sparse.shape[0] + 1)
-x_ticklabels_nest = np.concatenate((sigmas, np.ones(1) * np.nan))[nest_idx]
-elast_idx = x_axis_idx // (nest_ids_sparse.shape[0] + 1)
-elast_idx_last_idx = np.unique(elast_idx, return_index=True)[1] - 1
-elast_idx_last_idx = elast_idx_last_idx[elast_idx_last_idx >= 0]
-elast_idx[elast_idx_last_idx] = np.max(elast_idx) + 1
-x_ticklabels_elast = np.concatenate((avg_price_elasts, np.ones(1) * np.nan))[elast_idx]
-use_x_pos = ~np.isnan(x_ticklabels_nest[np.array(x_pos)])
-pos_preferred = np.array(x_pos)[(elast_idx == default_elast_id) & (nest_idx == default_nest_id)][0]
-
-# Create position indices / labels for graph
-x_ticklabels_elast_expand = np.concatenate((np.ones(1) * np.nan, x_ticklabels_elast, np.ones(1) * np.nan))
-x_pos_expand = np.arange(-1, num_x_axis_pts + 1)
-pos_begin = x_pos_expand[:-1][np.isnan(x_ticklabels_elast_expand[:-1])]
-pos_end = x_pos_expand[1:][np.isnan(x_ticklabels_elast_expand[1:])]
-pos_lines = np.unique(np.concatenate((pos_begin, pos_end)))[1:-1]
-pos_begin = pos_begin + 1 - 0.5 # correct position, then want to begin a little to the left
-pos_end = pos_end - 1 + 0.5 # correct position, then want to end a little to the right
-elasts_vals_ = [f"E = {elast_}" for i, elast_ in enumerate(avg_price_elasts[elast_ids_sparse])]
-
-# Populate arrays
-partial_diffPif_partial_bf_allfixed_ = np.zeros(num_x_axis_pts)
-partial_diffPif_partial_bf_allfixed_se_ = np.zeros(num_x_axis_pts)
-partial_Pif_partial_b_allfixed_ = np.zeros(num_x_axis_pts)
-partial_Pif_partial_b_allfixed_se_ = np.zeros(num_x_axis_pts)
-partial_CS_partial_b_allfixed_ = np.zeros(num_x_axis_pts)
-partial_CS_partial_b_allfixed_se_ = np.zeros(num_x_axis_pts)
-partial_diffPif_partial_bf_allbw_ = np.zeros(num_x_axis_pts)
-partial_diffPif_partial_bf_allbw_se_ = np.zeros(num_x_axis_pts)
-partial_Pif_partial_b_allbw_ = np.zeros(num_x_axis_pts)
-partial_Pif_partial_b_allbw_se_ = np.zeros(num_x_axis_pts)
-partial_CS_partial_b_allbw_ = np.zeros(num_x_axis_pts)
-partial_CS_partial_b_allbw_se_ = np.zeros(num_x_axis_pts)
-for i in range(num_x_axis_pts):
-    if (nest_idx[i] < nest_ids_sparse.shape[0]) and (elast_idx[i] < elast_ids_sparse.shape[0]):
-        partial_diffPif_partial_bf_allfixed_[i] = partial_diffPif_partial_bf_allfixed(elast_ids_sparse[elast_idx[i]],nest_ids_sparse[nest_idx[i]])[default_num_firm_idx]
-        partial_diffPif_partial_bf_allfixed_se_[i] = partial_diffPif_partial_bf_allfixed_se(elast_ids_sparse[elast_idx[i]],nest_ids_sparse[nest_idx[i]])[default_num_firm_idx]
-        
-        partial_Pif_partial_b_allfixed_[i] = partial_Pif_partial_b_allfixed(elast_ids_sparse[elast_idx[i]],nest_ids_sparse[nest_idx[i]])[default_num_firm_idx]
-        partial_Pif_partial_b_allfixed_se_[i] = partial_Pif_partial_b_allfixed_se(elast_ids_sparse[elast_idx[i]],nest_ids_sparse[nest_idx[i]])[default_num_firm_idx]
-        
-        partial_CS_partial_b_allfixed_[i] = partial_CS_partial_b_allfixed(elast_ids_sparse[elast_idx[i]],nest_ids_sparse[nest_idx[i]])[default_num_firm_idx]
-        partial_CS_partial_b_allfixed_se_[i] = partial_CS_partial_b_allfixed_se(elast_ids_sparse[elast_idx[i]],nest_ids_sparse[nest_idx[i]])[default_num_firm_idx]
-        
-        partial_diffPif_partial_bf_allbw_[i] = partial_diffPif_partial_bf_allbw(elast_ids_sparse[elast_idx[i]],nest_ids_sparse[nest_idx[i]])[default_num_firm_idx]
-        partial_diffPif_partial_bf_allbw_se_[i] = partial_diffPif_partial_bf_allbw_se(elast_ids_sparse[elast_idx[i]],nest_ids_sparse[nest_idx[i]])[default_num_firm_idx]
-        
-        partial_Pif_partial_b_allbw_[i] = partial_Pif_partial_b_allbw(elast_ids_sparse[elast_idx[i]],nest_ids_sparse[nest_idx[i]])[default_num_firm_idx]
-        partial_Pif_partial_b_allbw_se_[i] = partial_Pif_partial_b_allbw_se(elast_ids_sparse[elast_idx[i]],nest_ids_sparse[nest_idx[i]])[default_num_firm_idx]
-        
-        partial_CS_partial_b_allbw_[i] = partial_CS_partial_b_allbw(elast_ids_sparse[elast_idx[i]],nest_ids_sparse[nest_idx[i]])[default_num_firm_idx]
-        partial_CS_partial_b_allbw_se_[i] = partial_CS_partial_b_allbw_se(elast_ids_sparse[elast_idx[i]],nest_ids_sparse[nest_idx[i]])[default_num_firm_idx]
-    else:
-        partial_diffPif_partial_bf_allfixed_[i] = np.nan
-        partial_diffPif_partial_bf_allfixed_se_[i] = np.nan
-        
-        partial_Pif_partial_b_allfixed_[i] = np.nan
-        partial_Pif_partial_b_allfixed_se_[i] = np.nan
-        
-        partial_CS_partial_b_allfixed_[i] = np.nan
-        partial_CS_partial_b_allfixed_se_[i] = np.nan
-        
-        partial_diffPif_partial_bf_allbw_[i] = np.nan
-        partial_diffPif_partial_bf_allbw_se_[i] = np.nan
-        
-        partial_Pif_partial_b_allbw_[i] = np.nan
-        partial_Pif_partial_b_allbw_se_[i] = np.nan
-        
-        partial_CS_partial_b_allbw_[i] = np.nan
-        partial_CS_partial_b_allbw_se_[i] = np.nan
-        
-axs[0,0].bar(x_pos, partial_diffPif_partial_bf_allfixed_, yerr=partial_diffPif_partial_bf_allfixed_se_ * 1.96, capsize=7.0, color="black", alpha=0.8 * alpha)
-
-axs[0,1].bar(x_pos, partial_diffPif_partial_bf_allbw_, yerr=partial_diffPif_partial_bf_allbw_se_ * 1.96, capsize=7.0, color="black", alpha=0.8 * alpha)
-
-axs[1,0].bar(x_pos, partial_Pif_partial_b_allfixed_, yerr=partial_Pif_partial_b_allfixed_se_ * 1.96, capsize=7.0, color="black", alpha=0.8 * alpha)
-
-axs[1,1].bar(x_pos, partial_Pif_partial_b_allbw_, yerr=partial_Pif_partial_b_allbw_se_ * 1.96, capsize=7.0, color="black", alpha=0.8 * alpha)
-
-axs[2,0].bar(x_pos, partial_CS_partial_b_allfixed_, yerr=partial_CS_partial_b_allfixed_se_ * 1.96, capsize=7.0, color="black", alpha=0.8 * alpha)
-
-axs[2,1].bar(x_pos, partial_CS_partial_b_allbw_, yerr=partial_CS_partial_b_allbw_se_ * 1.96, capsize=7.0, color="black", alpha=0.8 * alpha)
-
-# Set y axes
-margin = 0.1
-min_y_0 = np.minimum(np.nanmin(partial_diffPif_partial_bf_allfixed_ - 1.96 * partial_diffPif_partial_bf_allfixed_se_), np.nanmin(partial_diffPif_partial_bf_allbw_ - 1.96 * partial_diffPif_partial_bf_allbw_se_))
-max_y_0 = np.maximum(np.nanmax(partial_diffPif_partial_bf_allfixed_ + 1.96 * partial_diffPif_partial_bf_allfixed_se_), np.nanmax(partial_diffPif_partial_bf_allbw_ + 1.96 * partial_diffPif_partial_bf_allbw_se_))
-diff_y_0 = max_y_0 - min_y_0
-min_y_1 = np.minimum(np.nanmin(partial_Pif_partial_b_allfixed_ - 1.96 * partial_Pif_partial_b_allfixed_se_), np.nanmin(partial_Pif_partial_b_allbw_ - 1.96 * partial_Pif_partial_b_allbw_se_))
-max_y_1 = np.maximum(np.nanmax(partial_Pif_partial_b_allfixed_ + 1.96 * partial_Pif_partial_b_allfixed_se_), np.nanmax(partial_Pif_partial_b_allbw_ + 1.96 * partial_Pif_partial_b_allbw_se_))
-diff_y_1 = max_y_1 - min_y_1
-min_y_2 = np.minimum(np.nanmin(partial_CS_partial_b_allfixed_ - 1.96 * partial_CS_partial_b_allfixed_se_), np.nanmin(partial_CS_partial_b_allbw_ - 1.96 * partial_CS_partial_b_allbw_se_))
-max_y_2 = np.maximum(np.nanmax(partial_CS_partial_b_allfixed_ + 1.96 * partial_CS_partial_b_allfixed_se_), np.nanmax(partial_CS_partial_b_allbw_ + 1.96 * partial_CS_partial_b_allbw_se_))
-diff_y_2 = max_y_2 - min_y_2
-for i in range(2):
-    axs[0,i].set_ylim((min_y_0 - margin * diff_y_0, max_y_0 + margin * diff_y_0))
-    axs[1,i].set_ylim((min_y_1 - margin * diff_y_1, max_y_1 + margin * diff_y_1))
-    axs[2,i].set_ylim((min_y_2 - margin * diff_y_2, max_y_2 + margin * diff_y_2))
-
-# Operations to all subplots
-for i in range(3):
-    for j in range(2):
-        # Set axis labels
-        axs[i,j].set_xticks(np.array(x_pos)[use_x_pos].tolist())
-        axs[i,j].set_xticklabels(x_ticklabels_nest[use_x_pos].tolist())
-        axs[i,j].set_xlabel("")
-#         axs[i,j].get_xticklabels()[pos_preferred - 1].set_color("white")
-#         axs[i,j].get_xticklabels()[pos_preferred - 1].set_fontsize("large")
-        axs[i,j].get_xticklabels()[pos_preferred - 1].set_weight("bold")
-#         axs[i,j].get_xticklabels()[pos_preferred - 1].set_bbox(dict(facecolor="black", alpha=0.25))
-        axs[i,j].vlines(pos_lines, 0, -0.1, color="black", lw=0.8, clip_on=False, transform=axs[i,j].get_xaxis_transform())
-        for elast_, pos0, pos1 in zip(elasts_vals_, pos_begin, pos_end):
-            text_add = axs[i,j].text((pos0 + pos1) / 2, -0.12, elast_, ha="center", clip_on=False, transform=axs[i,j].get_xaxis_transform(), fontsize="x-large")
-            if elast_ == f"E = {avg_price_elasts[default_elast_id]}":
-                text_add.set_weight("bold")
-        
-cols = ["fixed cost", "bandwidth cost"]
-rows = ["$\\frac{d \\Pi_{f}}{d B_{f}} - \\frac{d \\Pi_{f}}{d B_{f^{\\prime}}}$", "$\\frac{d \\Pi_{f}}{d B}$", "$\\frac{d CS}{d B}$"]
-pad = 12
-for ax, col in zip(axs[0], cols):
-    ax.annotate(col, xy=(0.5, 1), xytext=(0, pad),
-                xycoords="axes fraction", textcoords="offset points",
-                size="xx-large", ha="center", va="baseline")
-for ax, row in zip(axs[:,0], rows):
-    row_title = ax.annotate(row, xy=(0, 0.5), xytext=(-ax.yaxis.labelpad - pad, 0),
-                            xycoords=ax.yaxis.label, textcoords="offset points",
-                            size="xx-large", ha="right", va="center")
-    row_title.set_fontsize(1.5 * row_title.get_fontsize()) # 50% larger
-        
-plt.tight_layout()
-
-fig.subplots_adjust(left=0.15, top=0.95, hspace = 0.25)
-
-if save_:
-    plt.savefig(f"{paths.graphs_path}counterfactual_bw_deriv_imputations.pdf", bbox_inches="tight", transparent=True)
-
-if print_:
-    plt.show()
-    
-if save_:
-    # Reshape bandwidth derivative arrays to be elasticity x nesting param
-    partial_diffPif_partial_bf_allfixed_reshape = np.reshape(partial_diffPif_partial_bf_allfixed_[use_x_pos], (elast_ids_sparse.shape[0], nest_ids_sparse.shape[0]))
-    partial_diffPif_partial_bf_allbw_reshape = np.reshape(partial_diffPif_partial_bf_allbw_[use_x_pos], (elast_ids_sparse.shape[0], nest_ids_sparse.shape[0]))
-    partial_CS_partial_b_allfixed_reshape = np.reshape(partial_CS_partial_b_allfixed_[use_x_pos], (elast_ids_sparse.shape[0], nest_ids_sparse.shape[0]))
-    partial_CS_partial_b_allbw_reshape = np.reshape(partial_CS_partial_b_allbw_[use_x_pos], (elast_ids_sparse.shape[0], nest_ids_sparse.shape[0]))
-
-    # Create ratios
-    ratio_allfixed = np.round(partial_CS_partial_b_allfixed_reshape / partial_diffPif_partial_bf_allfixed_reshape, 1)
-    ratio_allbw = np.round(partial_CS_partial_b_allbw_reshape / partial_diffPif_partial_bf_allbw_reshape, 1)
-
-    ratio_allfixed_df = pd.DataFrame(ratio_allfixed, index=tuple([f"$E$ = {avg_price_elasts[elast_id]}" for i, elast_id in enumerate(elast_ids_sparse)]), columns=tuple([f"$\\sigma$ = {sigmas[nest_id]}" for i, nest_id in enumerate(nest_ids_sparse)]))
-    ratio_allbw_df = pd.DataFrame(ratio_allbw, index=tuple([f"$E$ = {avg_price_elasts[elast_id]}" for i, elast_id in enumerate(elast_ids_sparse)]), columns=tuple([f"$\\sigma$ = {sigmas[nest_id]}" for i, nest_id in enumerate(nest_ids_sparse)]))
-
-    create_file(f"{paths.stats_path}ratio_allfixed_elastic.tex", f"{ratio_allfixed[0,default_nest_id]:.1f}")
-    create_file(f"{paths.stats_path}ratio_allfixed_midelastic.tex", f"{ratio_allfixed[1,default_nest_id]:.1f}")
-    create_file(f"{paths.stats_path}ratio_allfixed_inelastic.tex", f"{ratio_allfixed[2,default_nest_id]:.1f}")
-
-    create_file(f"{paths.stats_path}ratio_allbw_elastic.tex", f"{ratio_allbw[0,default_nest_id]:.1f}")
-    create_file(f"{paths.stats_path}ratio_allbw_midelastic.tex", f"{ratio_allbw[1,default_nest_id]:.1f}")
-    create_file(f"{paths.stats_path}ratio_allbw_inelastic.tex", f"{ratio_allbw[2,default_nest_id]:.1f}")
-    
-    if print_:
-        print(ratio_allfixed_df)
-        print(ratio_allbw_df)
-
-
-
-
-# %%
-# Welfare from "add Free" counterfactuals for all imputations
-
-# Set up figure and grid specification
-fig = plt.figure(figsize=(11.0 * 1.5, 8.0 * 1.5))
-axs = {} # save axes in dictionary
-gs_cs = GridSpec(elast_ids_sparse.shape[0],2)
-gs_ps = GridSpec(elast_ids_sparse.shape[0],2)
-gs_ts = GridSpec(elast_ids_sparse.shape[0],2)
-leftmost = 0.02
-rightmost = 1.0 - leftmost
-inner_margin = 0.3
-outer_margin = 0.075
-section_size = (rightmost - leftmost) / 3.0
-gs_cs.update(left=leftmost, right=leftmost + section_size - outer_margin / 2.0, wspace=inner_margin)
-gs_ps.update(left=leftmost + section_size + outer_margin / 2.0, right=leftmost + 2.0 * section_size - outer_margin / 2.0, wspace=inner_margin)
-gs_ts.update(left=leftmost + 2.0 * section_size + outer_margin / 2.0, right=rightmost, wspace=inner_margin)
-for i in range(elast_ids_sparse.shape[0]):
-    for j in range(2):
-        axs[f"cs_{i},{j}"] = plt.subplot(gs_cs[i,j])
-        axs[f"ps_{i},{j}"] = plt.subplot(gs_ps[i,j])
-        axs[f"ts_{i},{j}"] = plt.subplot(gs_ts[i,j])
-        
-# Create axis indices and labels
-num_x_axis_pts = 2 * nest_ids_sparse.shape[0] + (nest_ids_sparse.shape[0] - 1)
-x_pos = [i for i in range(num_x_axis_pts)]
-x_axis_idx = np.arange(num_x_axis_pts)
-firms_idx = x_axis_idx % (2 + 1)
-x_ticklabels_firms = np.array([3,4,np.nan])[firms_idx]
-nest_idx = x_axis_idx // (2 + 1)
-nest_idx_last_idx = np.unique(nest_idx, return_index=True)[1] - 1
-nest_idx_last_idx = nest_idx_last_idx[nest_idx_last_idx >= 0]
-nest_idx[nest_idx_last_idx] = np.max(nest_idx) + 1
-x_ticklabels_nest = np.concatenate((sigmas, np.ones(1) * np.nan))[nest_idx]
-use_x_pos = ~np.isnan(x_ticklabels_firms[np.array(x_pos)])
-
-# Create position indices / labels for graph
-x_ticklabels_nest_expand = np.concatenate((np.ones(1) * np.nan, x_ticklabels_nest, np.ones(1) * np.nan))
-x_pos_expand = np.arange(-1, num_x_axis_pts + 1)
-pos_begin = x_pos_expand[:-1][np.isnan(x_ticklabels_nest_expand[:-1])]
-pos_end = x_pos_expand[1:][np.isnan(x_ticklabels_nest_expand[1:])]
-pos_lines = np.unique(np.concatenate((pos_begin, pos_end)))[1:-1]
-pos_begin = pos_begin + 1 - 0.5 # correct position, then want to begin a little to the left
-pos_end = pos_end - 1 + 0.5 # correct position, then want to end a little to the right
-nest_vals_ = [f"{nest_}" for i, nest_ in enumerate(sigmas[nest_ids_sparse])]
-firms_vals_ = ["fixed cost", "bandwidth cost"]
-
-# Populate arrays
-cs_free_allfixed_ = np.zeros((elast_ids_sparse.shape[0],num_x_axis_pts))
-cs_free_allfixed_se_ = np.zeros((elast_ids_sparse.shape[0],num_x_axis_pts))
-ps_free_allfixed_ = np.zeros((elast_ids_sparse.shape[0],num_x_axis_pts))
-ps_free_allfixed_se_ = np.zeros((elast_ids_sparse.shape[0],num_x_axis_pts))
-ts_free_allfixed_ = np.zeros((elast_ids_sparse.shape[0],num_x_axis_pts))
-ts_free_allfixed_se_ = np.zeros((elast_ids_sparse.shape[0],num_x_axis_pts))
-cs_free_allbw_ = np.zeros((elast_ids_sparse.shape[0],num_x_axis_pts))
-cs_free_allbw_se_ = np.zeros((elast_ids_sparse.shape[0],num_x_axis_pts))
-ps_free_allbw_ = np.zeros((elast_ids_sparse.shape[0],num_x_axis_pts))
-ps_free_allbw_se_ = np.zeros((elast_ids_sparse.shape[0],num_x_axis_pts))
-ts_free_allbw_ = np.zeros((elast_ids_sparse.shape[0],num_x_axis_pts))
-ts_free_allbw_se_ = np.zeros((elast_ids_sparse.shape[0],num_x_axis_pts))
-for i in range(elast_ids_sparse.shape[0]):
-    for j in range(num_x_axis_pts):
-        if (firms_idx[j] < 2) and (nest_idx[j] < nest_ids_sparse.shape[0]):
-            cs_free_allfixed_[i,j] = cs_free_allfixed(elast_ids_sparse[i],nest_ids_sparse[nest_idx[j]])[np.arange(2)[firms_idx[j]]]
-            cs_free_allfixed_se_[i,j] = cs_free_allfixed_se(elast_ids_sparse[i],nest_ids_sparse[nest_idx[j]])[np.arange(2)[firms_idx[j]]]
-
-            ps_free_allfixed_[i,j] = ps_free_allfixed(elast_ids_sparse[i],nest_ids_sparse[nest_idx[j]])[np.arange(2)[firms_idx[j]]]
-            ps_free_allfixed_se_[i,j] = ps_free_allfixed_se(elast_ids_sparse[i],nest_ids_sparse[nest_idx[j]])[np.arange(2)[firms_idx[j]]]
-
-            ts_free_allfixed_[i,j] = ts_free_allfixed(elast_ids_sparse[i],nest_ids_sparse[nest_idx[j]])[np.arange(2)[firms_idx[j]]]
-            ts_free_allfixed_se_[i,j] = ts_free_allfixed_se(elast_ids_sparse[i],nest_ids_sparse[nest_idx[j]])[np.arange(2)[firms_idx[j]]]
-
-            cs_free_allbw_[i,j] = cs_free_allbw(elast_ids_sparse[i],nest_ids_sparse[nest_idx[j]])[np.arange(2)[firms_idx[j]]]
-            cs_free_allbw_se_[i,j] = cs_free_allbw_se(elast_ids_sparse[i],nest_ids_sparse[nest_idx[j]])[np.arange(2)[firms_idx[j]]]
-
-            ps_free_allbw_[i,j] = ps_free_allbw(elast_ids_sparse[i],nest_ids_sparse[nest_idx[j]])[np.arange(2)[firms_idx[j]]]
-            ps_free_allbw_se_[i,j] = ps_free_allbw_se(elast_ids_sparse[i],nest_ids_sparse[nest_idx[j]])[np.arange(2)[firms_idx[j]]]
-
-            ts_free_allbw_[i,j] = ts_free_allbw(elast_ids_sparse[i],nest_ids_sparse[nest_idx[j]])[np.arange(2)[firms_idx[j]]]
-            ts_free_allbw_se_[i,j] = ts_free_allbw_se(elast_ids_sparse[i],nest_ids_sparse[nest_idx[j]])[np.arange(2)[firms_idx[j]]]
-        else:
-            cs_free_allfixed_[i,j] = np.nan
-            cs_free_allfixed_se_[i,j] = np.nan
-
-            ps_free_allfixed_[i,j] = np.nan
-            ps_free_allfixed_se_[i,j] = np.nan
-
-            ts_free_allfixed_[i,j] = np.nan
-            ts_free_allfixed_se_[i,j] = np.nan
-
-            cs_free_allbw_[i,j] = np.nan
-            cs_free_allbw_se_[i,j] = np.nan
-
-            ps_free_allbw_[i,j] = np.nan
-            ps_free_allbw_se_[i,j] = np.nan
-
-            ts_free_allbw_[i,j] = np.nan
-            ts_free_allbw_se_[i,j] = np.nan
-        
-# Fill in results
-for i in range(elast_ids_sparse.shape[0]):
-    axs[f"cs_{i},0"].bar(x_pos, cs_free_allfixed_[i,:], yerr=cs_free_allfixed_se_[i,:] * 1.96, capsize=7.0, color="black", alpha=0.8 * alpha)
-    axs[f"cs_{i},1"].bar(x_pos, cs_free_allbw_[i,:], yerr=cs_free_allbw_se_[i,:] * 1.96, capsize=7.0, color="black", alpha=0.8 * alpha)
-    
-    axs[f"ps_{i},0"].bar(x_pos, ps_free_allfixed_[i,:], yerr=ps_free_allfixed_se_[i,:] * 1.96, capsize=7.0, color="black", alpha=0.8 * alpha)
-    axs[f"ps_{i},1"].bar(x_pos, ps_free_allbw_[i,:], yerr=ps_free_allbw_se_[i,:] * 1.96, capsize=7.0, color="black", alpha=0.8 * alpha)
-    
-    axs[f"ts_{i},0"].bar(x_pos, ts_free_allfixed_[i,:], yerr=ts_free_allfixed_se_[i,:] * 1.96, capsize=7.0, color="black", alpha=0.8 * alpha)
-    axs[f"ts_{i},1"].bar(x_pos, ts_free_allbw_[i,:], yerr=ts_free_allbw_se_[i,:] * 1.96, capsize=7.0, color="black", alpha=0.8 * alpha)
-
-# Set y axes
-margin = 0.1
-for i in range(elast_ids_sparse.shape[0]):
-    min_y_cs = np.minimum(np.nanmin(cs_free_allfixed_[i,:] - 1.96 * cs_free_allfixed_se_[i,:]), np.nanmin(cs_free_allbw_[i,:] - 1.96 * cs_free_allbw_se_[i,:]))
-    max_y_cs = np.maximum(np.nanmax(cs_free_allfixed_[i,:] + 1.96 * cs_free_allfixed_se_[i,:]), np.nanmax(cs_free_allbw_[i,:] + 1.96 * cs_free_allbw_se_[i,:]))
-    diff_y_cs = max_y_cs - min_y_cs
-    min_y_ps = np.minimum(np.nanmin(ps_free_allfixed_[i,:] - 1.96 * ps_free_allfixed_se_[i,:]), np.nanmin(ps_free_allbw_[i,:] - 1.96 * ps_free_allbw_se_[i,:]))
-    max_y_ps = np.maximum(np.nanmax(ps_free_allfixed_[i,:] + 1.96 * ps_free_allfixed_se_[i,:]), np.nanmax(ps_free_allbw_[i,:] + 1.96 * ps_free_allbw_se_[i,:]))
-    diff_y_ps = max_y_ps - min_y_ps
-    min_y_ts = np.minimum(np.nanmin(ts_free_allfixed_[i,:] - 1.96 * ts_free_allfixed_se_[i,:]), np.nanmin(ts_free_allbw_[i,:] - 1.96 * ts_free_allbw_se_[i,:]))
-    max_y_ts = np.maximum(np.nanmax(ts_free_allfixed_[i,:] + 1.96 * ts_free_allfixed_se_[i,:]), np.nanmax(ts_free_allbw_[i,:] + 1.96 * ts_free_allbw_se_[i,:]))
-    diff_y_ts = max_y_ts - min_y_ts
-    for j in range(2):
-        axs[f"cs_{i},{j}"].set_ylim((min_y_cs - margin * diff_y_cs, max_y_cs + margin * diff_y_cs))
-        axs[f"ps_{i},{j}"].set_ylim((min_y_ps - margin * diff_y_ps, max_y_ps + margin * diff_y_ps))
-        axs[f"ts_{i},{j}"].set_ylim((min_y_ts - margin * diff_y_ts, max_y_ts + margin * diff_y_ts))
-    
-# Operations to all subplots
-for i in range(elast_ids_sparse.shape[0]):
-    for surplus in ["cs", "ps", "ts"]:
-        for j in range(2):
-            # Set title
-            if i == 0:
-                axs[f"{surplus}_{i},{j}"].set_title(firms_vals_[j])
-            
-            # Set axis labels
-            axs[f"{surplus}_{i},{j}"].set_xticks(np.array(x_pos)[use_x_pos].tolist())
-            axs[f"{surplus}_{i},{j}"].set_xticklabels(x_ticklabels_firms[use_x_pos].astype(int).tolist())
-            axs[f"{surplus}_{i},{j}"].set_xlabel("")
-            axs[f"{surplus}_{i},{j}"].vlines(pos_lines, 0, -0.1, color="black", lw=0.8, clip_on=False, transform=axs[f"{surplus}_{i},{j}"].get_xaxis_transform())
-            for nest_, pos0, pos1 in zip(nest_vals_, pos_begin, pos_end):
-                text_add = axs[f"{surplus}_{i},{j}"].text((pos0 + pos1) / 2, -0.15, nest_, ha="center", clip_on=False, transform=axs[f"{surplus}_{i},{j}"].get_xaxis_transform(), fontsize="large")
-                if nest_ == f"{sigmas[default_nest_id]}":
-                    text_add.set_weight("bold")
-        
-cols = ["$\\Delta CS$", "$\\Delta PS$", "$\\Delta TS$"]
-rows = ["E = {}".format(elast) for elast in avg_price_elasts]
-pad = 12
-axs_firstcol = [axs[f"{surplus}_0,0"] for surplus in ["cs", "ps", "ts"]]
-add_pad = 10 # want more because used title for cost specification
-for ax, col in zip(axs_firstcol, cols):
-    title = ax.annotate(col, xy=(1 + inner_margin / 2.0, 1), xytext=(0, pad + add_pad), 
-                        xycoords="axes fraction", textcoords="offset points", 
-                        size="xx-large", ha="center", va="baseline")
-    title.set_fontsize(1.5 * title.get_fontsize()) # 50% larger than xx-large
-axs_firstcol = [axs[f"cs_{i},0"] for i in range(elast_ids_sparse.shape[0])]
-for ax, row in zip(axs_firstcol, rows):
-    row_title = ax.annotate(row, xy=(0, 0.5), xytext=(-ax.yaxis.labelpad - pad, 0),
-                            xycoords=ax.yaxis.label, textcoords="offset points",
-                            size="xx-large", ha="right", va="center")
-    if row == f"E = {avg_price_elasts[default_elast_id]}":
-        row_title.set_weight("bold")
-
-if save_:
-    plt.savefig(f"{paths.graphs_path}counterfactual_free_welfare_imputations.pdf", bbox_inches="tight", transparent=True)
-
-if print_:
-    plt.show()
-    
 # Channel capacity as function of radius
 radii = np.linspace(0.01, 4.0, 100)
 hata_losses = infr.hata_loss(radii, infr.freq_rep, infr.height_rep)
@@ -2476,5 +1956,29 @@ xis_across_firms = np.unique(xis[:,ds.firms != 1]) # non-Orange xis
 thetahat = np.load(f"{paths.arrays_path}thetahat_e{default_elast_id}_n{default_nest_id}.npy")
 xis_across_firms = np.concatenate((xis_across_firms, np.array([thetahat[coef.O]])))
 xis_across_firms_stdev = np.std(xis_across_firms, ddof=1)
-create_file(f"{paths.stats_path}xis_across_firms_stdev.tex", f"{xis_across_firms_stdev:.3}")
-create_file(f"{paths.stats_path}xis_Org_stdev.tex", f"{xis_Org_stdev:.3}")
+if save_:
+    create_file(f"{paths.stats_path}xis_across_firms_stdev.tex", f"{xis_across_firms_stdev:.3}")
+    create_file(f"{paths.stats_path}xis_Org_stdev.tex", f"{xis_Org_stdev:.3}")
+
+# %%
+# Difference in diversion ratios when average particular ways
+
+xis = blp.xi(ds, thetahat, ds.data, None)
+div_ratios = blp.div_ratio(ds, thetahat, ds.data, xis=xis)
+div_ratios_alt = blp.div_ratio_numdenom(ds, thetahat, ds.data, xis=xis)
+diff_div_ratios = np.abs(np.mean(div_ratios[1:]) + np.mean(div_ratios_alt[0][1:]) / np.mean(div_ratios_alt[1][1:]))
+if save_:
+    create_file(f"{paths.stats_path}diff_div_ratios_averaging.tex", f"{diff_div_ratios:.5f}")
+    
+# %%
+# What discount rate would rationalize the bids based on our number for firm WTP for spectrum?
+
+idx_4firms = 3
+firm_wtp_monthly = partial_diffPif_partial_bf_allbw(default_elast_id,default_nest_id)[idx_4firms]
+firm_wtp_discounted = 0.70
+discount_factor_monthly = 1.0 - firm_wtp_monthly / firm_wtp_discounted
+discount_factor_yearly = discount_factor_monthly**12.0
+discount_rate_yearly = 1.0 / discount_factor_yearly - 1.0
+if save_:
+    create_file(f"{paths.stats_path}auction_firm_wtp_allbw.tex", f"{firm_wtp_monthly:.5f}")
+    create_file(f"{paths.stats_path}auction_implied_discount_rate_allbw.tex", f"{discount_rate_yearly * 100.0:.2f}")

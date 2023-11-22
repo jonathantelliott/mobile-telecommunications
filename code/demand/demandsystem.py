@@ -2,7 +2,7 @@ import autograd.numpy as np
 #import numpy as np
 
 class DemandSystem:
-    def __init__(self, df, sortval, charlist, elist, demolist, aggshare, s0, prodlist, firmlist, outside_option_share, monthname='month', marketname='market', productname='j', pricename='p', qname='q', dlimname='dlim', dbarname='dbar', marketsharename='mktshare', msizename='msize', vunlimitedname='vunlimited', commit12name='commit12', commit24name='commit24', Oname='Orange', lowdataname='lowdata', highdataname='highdata', popdensname='pop_dens', propabovename='prop_above', prop0name='prop_zero', include_ROF=True):
+    def __init__(self, df, sortval, charlist, elist, demolist, aggshare, s0, prodlist, firmlist, outside_option_share, monthname='month', marketname='market', productname='j', pricename='p', qname='q', dlimname='dlim', dbarname='dbar', marketsharename='mktshare', msizename='msize', vunlimitedname='vunlimited', commit12name='commit12', commit24name='commit24', Oname='Orange', lowdataname='lowdata', highdataname='highdata', popdensname='pop_dens', include_ROF=True):
         # Initial stuff
         if len(charlist['names']) == len(charlist['norm']):
             char = charlist['names']
@@ -19,7 +19,7 @@ class DemandSystem:
         M = len(np.unique(X[marketname]))
         J = len(np.unique(prodlist))
         C = len(char) # characteristics
-        dim3 = char + [dbarname] + [popdensname] + [propabovename] + [prop0name] + elist + demolist + [marketsharename] + [msizename] + [marketname]
+        dim3 = char + [dbarname] + [popdensname] + elist + demolist + [marketsharename] + [msizename] + [marketname]
         npdata = np.zeros((M, J, len(dim3)))
         for j in range(J):
             npdata[:, j, :] = X[X[productname] == j + 1][dim3].values
@@ -111,8 +111,6 @@ class DemandSystem:
         self.Oname = Oname
         self.popdensname = popdensname
         self.vunlimitedname = vunlimitedname
-        self.propabovename = propabovename
-        self.prop0name = prop0name
         self.marketname = marketname
         self.demolist = demolist
         self.Oproducts = Oproducts

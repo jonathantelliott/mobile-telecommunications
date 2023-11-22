@@ -1,15 +1,15 @@
 #!/bin/sh
 #
 #SBATCH --verbose
-#SBATCH --array=0-11
+#SBATCH --array=0
 #SBATCH --job-name=demand_est
 #SBATCH --output=slurm_%j.out
 #SBATCH --error=slurm_%j.err
-#SBATCH --time=5-00:00:00
+#SBATCH --time=3-00:00:00
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=100GB
-#SBATCH --mail-type=END
+#SBATCH --mem=75GB
+#SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mail-user=jte254@nyu.edu
 
 #SCRATCHLOC=$(sed -n -e '/^scratch_path/p' paths.py)

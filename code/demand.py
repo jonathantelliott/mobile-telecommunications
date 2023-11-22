@@ -83,13 +83,13 @@ ds = demsys.DemandSystem(df,
 #----------------------------------------------------------------
 
 task_id = int(sys.argv[1])
-elast_id = task_id // paths.sigmas.shape[0]
-nest_id = task_id % paths.sigmas.shape[0]
+elast_id = task_id // paths.div_ratios.shape[0]
+nest_id = task_id % paths.div_ratios.shape[0]
 avg_price_el = paths.avg_price_elasts[elast_id]
-sigma = paths.sigmas[nest_id]
+div_ratio = paths.div_ratios[nest_id]
 
 print('Average price elasticity: ' + str(avg_price_el), flush=True)
-print('Sigma: ' + str(sigma), flush=True)
+print('Div ratio: ' + str(div_ratio), flush=True)
 
 if task_id == 0: # only need to do this once
     with open(f"{paths.data_path}demandsystem.obj", "wb") as file_ds:
@@ -109,10 +109,11 @@ thetainit_O = paths.thetainit_O[elast_id,nest_id]
 thetainit_d0 = paths.thetainit_d0[elast_id,nest_id]
 thetainit_dz = paths.thetainit_dz[elast_id,nest_id]
 thetainit_c = paths.thetainit_c[elast_id,nest_id]
-thetainit = np.array([thetainit_p0, thetainit_pz, thetainit_v, thetainit_O, thetainit_d0, thetainit_dz, thetainit_c])
+thetainit_sigma = paths.thetainit_sigma[elast_id,nest_id]
+thetainit = np.array([thetainit_p0, thetainit_pz, thetainit_v, thetainit_O, thetainit_d0, thetainit_dz, thetainit_c, thetainit_sigma])
 Winit = np.identity(K)
 
-thetahat, What = est.est(ds, thetainit, Winit, K, avg_price_el, sigma)
+thetahat, What = est.est(ds, thetainit, Winit, K, avg_price_el, div_ratio)
 
 
 #------------------------------------------------------------------
@@ -120,7 +121,7 @@ thetahat, What = est.est(ds, thetainit, Winit, K, avg_price_el, sigma)
 #------------------------------------------------------------------
 
 N = ds.num_markets_moms
-G_n = vm.G_n(ds, thetahat, ds.data, avg_price_el, sigma, N, K, 1.0e-7)
+G_n = vm.G_n(ds, thetahat, ds.data, avg_price_el, div_ratio, N, K, 1.0e-7)
 varmatrix_num = vm.V(G_n, What, np.linalg.inv(What))
 print('Numerical variance matrix: ', flush=True)
 print(str(varmatrix_num), flush=True)
@@ -138,7 +139,7 @@ np.save(paths.arrays_path + "What_e" + str(elast_id) + "_n" + str(nest_id), What
 np.save(paths.arrays_path + "Gn_e" + str(elast_id) + "_n" + str(nest_id), G_n)
 np.save(paths.arrays_path + "stderrs_e" + str(elast_id) + "_n" + str(nest_id), stderrs_num)
 
-df_est = pd.DataFrame(thetahat, index=['p0','pz','v','O','d0','dz','c'], columns=['estimate'])
+df_est = pd.DataFrame(thetahat, index=['p0','pz','v','O','d0','dz','c','sigma'], columns=['estimate'])
 df_est['std_errs'] = stderrs_num
 df_est.to_csv(paths.res_path + "res_e" + str(elast_id) + "_n" + str(nest_id) + '.csv',index=True)
 
@@ -147,10 +148,10 @@ chol_decomp = np.linalg.cholesky(varmatrix_num / float(N))
 nu_s = np.random.normal(size=(thetahat.shape[0],numdraws))
 Nu_s = np.hstack((nu_s, -nu_s))
 theta_s = thetahat[:,np.newaxis] + np.matmul(chol_decomp, Nu_s)
-df_draws = pd.DataFrame(np.transpose(theta_s), columns=['p0','pz','v','O','d0','dz','c'])
+df_draws = pd.DataFrame(np.transpose(theta_s), columns=['p0','pz','v','O','d0','dz','c','sigma'])
 df_draws.to_csv(paths.asym_draws_path + 'asym_e' + str(elast_id) + "_n" + str(nest_id) + '.csv', index=False)
 
-theta = np.concatenate((thetahat, np.array([sigma])))
+theta = np.copy(thetahat)
 X = ds.data
 xis = blp.xi(ds, theta, X, None)
 qidx = ds.chars.index(ds.qname)

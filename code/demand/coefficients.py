@@ -20,3 +20,6 @@ def theta_di(ds, theta, yc):
 
 def theta_c(ds, theta, yc):
     return np.exp(theta[c])
+
+def theta_sigma(ds, theta, yc):
+    return np.exp(theta[sigma]) / (1.0 + np.exp(theta[sigma]))
