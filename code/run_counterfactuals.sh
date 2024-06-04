@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 #SBATCH --verbose
-#SBATCH --array=0
+#SBATCH --array=0-1
 #SBATCH --job-name=cntrfctls
 #SBATCH --output=slurm_%j.out
 #SBATCH --error=slurm_%j.err
@@ -9,7 +9,7 @@
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=18
 #SBATCH --mem=12GB
-#SBATCH --mail-type=END
+#SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mail-user=jte254@nyu.edu
 
 #SCRATCHLOC=$(sed -n -e '/^scratch_path/p' paths.py)

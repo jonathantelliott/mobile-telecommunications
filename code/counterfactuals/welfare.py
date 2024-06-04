@@ -50,7 +50,7 @@ def consumer_surplus(ds, xis, theta, include_logit_shock=True):
     
     return cs_mi
 
-def agg_consumer_surplus(ds, xis, theta, pop, include_logit_shock=True, include_pop=True):
+def agg_consumer_surplus(ds, xis, theta, pop, include_logit_shock=True, include_pop=True, market_weights=None):
     """
         Return the aggregate consumer surplus associated with the product characteristics
     
@@ -68,6 +68,8 @@ def agg_consumer_surplus(ds, xis, theta, pop, include_logit_shock=True, include_
             determine whether or not to include logit shocks in the consumer surplus calculation
         include_pop : bool
             determines whether or not to include population in the consumer surplus measure
+        market_weights : ndarray
+            (M,) array of weights for each market (or None if no weights)
 
     Returns
     -------
@@ -80,12 +82,14 @@ def agg_consumer_surplus(ds, xis, theta, pop, include_logit_shock=True, include_
     
     # Aggregate across markets and types
     pop_use = pop if include_pop else np.ones((cs_mi.shape[0],))
+    if market_weights is not None:
+        pop_use = pop_use * market_weights
     cs_i = np.sum(cs_mi * pop_use[:,np.newaxis] * (1. / float(cs_mi.shape[1])), axis=0)
     cs = np.sum(cs_i)
     
     return cs
     
-def producer_surplus(ds, xis, theta, pop, market_size, R, c_u, c_R, include_pop=True):
+def producer_surplus(ds, xis, theta, pop, market_size, R, c_u, c_R, include_pop=True, market_weights=None):
     """
         Return the producer surplus associated with the product characteristics and infrastructure investment
     
@@ -109,6 +113,8 @@ def producer_surplus(ds, xis, theta, pop, market_size, R, c_u, c_R, include_pop=
             (M,F) array of per-tower costs
         include_pop : bool
             determines whether or not to include population in the consumer surplus measure
+        market_weights : ndarray
+            (M,) array of weights for each market (or None if no weights)
 
     Returns
     -------
@@ -118,19 +124,26 @@ def producer_surplus(ds, xis, theta, pop, market_size, R, c_u, c_R, include_pop=
     
     # Determine total profits
     shares = blp.s_mj(ds, theta, ds.data, xis) * pop[:,np.newaxis]
+    if market_weights is not None:
+        shares = shares * market_weights[:,np.newaxis]
     pidx = ds.chars.index(ds.pname)
     profits = np.sum(shares * (ds.data[:,:,pidx] - c_u[np.newaxis,:]))
     
     # Determine investment cost
     stations = infr.num_stations(R, market_size[:,np.newaxis])
     investment_cost = np.sum(stations * c_R)
+    if market_weights is not None:
+        investment_cost = np.sum(stations * c_R * market_weights[:,np.newaxis])
     
     # Calculate producer surplus
-    ps = profits - investment_cost if include_pop else (profits - investment_cost) / np.sum(pop)
+    sum_pop = np.sum(pop)
+    if market_weights is not None:
+        sum_pop = np.sum(pop * market_weights)
+    ps = profits - investment_cost if include_pop else (profits - investment_cost) / sum_pop
     
     return ps
 
-def total_surplus(ds, xis, theta, pop, market_size, R, c_u, c_R, include_logit_shock=True, include_pop=True):
+def total_surplus(ds, xis, theta, pop, market_size, R, c_u, c_R, include_logit_shock=True, include_pop=True, market_weights=None):
     """
         Return the total surplus associated with the product characteristics and infrastructure investment
     
@@ -156,6 +169,8 @@ def total_surplus(ds, xis, theta, pop, market_size, R, c_u, c_R, include_logit_s
             determine whether or not to include logit shocks in the consumer surplus calculation
         include_pop : bool
             determines whether or not to include population in the consumer surplus measure
+        market_weights : ndarray
+            (M,) array of weights for each market (or None if no weights)
 
     Returns
     -------
@@ -163,8 +178,8 @@ def total_surplus(ds, xis, theta, pop, market_size, R, c_u, c_R, include_logit_s
             aggregate total surplus
     """
     
-    cs = agg_consumer_surplus(ds, xis, theta, pop, include_logit_shock=include_logit_shock, include_pop=include_pop)
-    ps = producer_surplus(ds, xis, theta, pop, market_size, R, c_u, c_R, include_pop=include_pop)
+    cs = agg_consumer_surplus(ds, xis, theta, pop, include_logit_shock=include_logit_shock, include_pop=include_pop, market_weights=market_weights)
+    ps = producer_surplus(ds, xis, theta, pop, market_size, R, c_u, c_R, include_pop=include_pop, market_weights=market_weights)
     ts = cs + ps
     
     return ts

@@ -3,7 +3,7 @@ import copy
 
 import numpy as np
 
-from scipy.optimize import fsolve
+from scipy.optimize import minimize, fsolve, root
 
 import counterfactuals.infrastructurefunctions as infr
 import counterfactuals.transmissionequilibrium as transeq
@@ -14,7 +14,7 @@ import demand.blpextension as blp
 import demand.dataexpressions as de
 
 # %%
-def pi_deriv_R(R, bw, gamma, ds, xis, theta, pop, market_size, c_u, symmetric=False, impute_MVNO={'impute': False}, q_0=None, eps=0.001, areatype="urban"):
+def pi_deriv_R(R, bw, gamma, ds, xis, theta, pop, market_size, c_u, symmetric=False, impute_MVNO={'impute': False}, q_0=None, eps=0.001, areatype="urban", market_weights=None, calc_q_carefully=False):
     """
         Return the derivative of the operating income function with respect to cell radius, based on two-sided numerical derivative
     
@@ -51,6 +51,8 @@ def pi_deriv_R(R, bw, gamma, ds, xis, theta, pop, market_size, c_u, symmetric=Fa
             size of perturbation to measure derivative
         areatype : string
             whether using urban, suburban, or rural Hata loss function
+        market_weights : ndarray
+            (M,) array of weights for each market (or None if no weights)
 
     Returns
     -------
@@ -73,9 +75,11 @@ def pi_deriv_R(R, bw, gamma, ds, xis, theta, pop, market_size, c_u, symmetric=Fa
             cc_low[m,f] = infr.rho_C_hex(bw[m,f], R_low[m,f], gamma[m], areatype=areatype)
 
     # Calculate number of stations with given radius
-    num_stations_R = infr.num_stations(R, market_size[:,np.newaxis])
-    num_stations_high = infr.num_stations(R_high, market_size[:,np.newaxis])
-    num_stations_low = infr.num_stations(R_low, market_size[:,np.newaxis])
+    if market_size.ndim == 1:
+        market_size = market_size[:,np.newaxis]
+    num_stations_R = infr.num_stations(R, market_size)
+    num_stations_high = infr.num_stations(R_high, market_size)
+    num_stations_low = infr.num_stations(R_low, market_size)
 
     # Create information about firms and markets
     firms = np.unique(ds.firms)
@@ -126,8 +130,8 @@ def pi_deriv_R(R, bw, gamma, ds, xis, theta, pop, market_size, c_u, symmetric=Fa
         for m in range(M):
             select_m = np.arange(M) == m
             ds_temp.data = ds.data[select_m,:,:]
-            q_high[m,:] = transeq.q(cc_high_f[select_m,:], ds_temp, xis[select_m,:], theta, stations_high[select_m,:], pop[select_m], impute_MVNO=impute_MVNO, q_0=q_0)[0,:] # 0 b/c we're doing this market-by-market
-            q_low[m,:] = transeq.q(cc_low_f[select_m,:], ds_temp, xis[select_m,:], theta, stations_low[select_m,:], pop[select_m], impute_MVNO=impute_MVNO, q_0=q_0)[0,:] # 0 b/c we're doing this market-by-market
+            q_high[m,:] = transeq.q(cc_high_f[select_m,:], ds_temp, xis[select_m,:], theta, stations_high[select_m,:], pop[select_m], impute_MVNO=impute_MVNO, q_0=q_0, calc_carefully=calc_q_carefully)[0,:] # 0 b/c we're doing this market-by-market
+            q_low[m,:] = transeq.q(cc_low_f[select_m,:], ds_temp, xis[select_m,:], theta, stations_low[select_m,:], pop[select_m], impute_MVNO=impute_MVNO, q_0=q_0, calc_carefully=calc_q_carefully)[0,:] # 0 b/c we're doing this market-by-market
 
         # Update download speeds in characteristics
         ds_high = copy.deepcopy(ds)
@@ -140,6 +144,9 @@ def pi_deriv_R(R, bw, gamma, ds, xis, theta, pop, market_size, c_u, symmetric=Fa
         # Calculate demand for each product
         s_high = blp.s_mj(ds_high, theta, ds_high.data, xis) * pop[:,np.newaxis]
         s_low = blp.s_mj(ds_low, theta, ds_low.data, xis) * pop[:,np.newaxis]
+        if market_weights is not None:
+            s_high = s_high * market_weights[:,np.newaxis]
+            s_low = s_low * market_weights[:,np.newaxis]
 
         # Calculate profits
         pidx = ds.chars.index(ds.pname)
@@ -156,7 +163,7 @@ def pi_deriv_R(R, bw, gamma, ds, xis, theta, pop, market_size, c_u, symmetric=Fa
     # Return derivative
     return R_deriv
 
-def R_foc(R, bw, gamma, ds, xis, theta, pop, market_size, c_u, c_R, symmetric=False, impute_MVNO={'impute': False}, q_0=None, eps=0.001, areatype="urban"):
+def R_foc(R, bw, gamma, ds, xis, theta, pop, market_size, c_u, c_R, symmetric=False, impute_MVNO={'impute': False}, q_0=None, eps=0.001, areatype="urban", market_weights=None, calc_q_carefully=False):
     """
         Return the derivative of the overall profit function with respect to cell radius, based on two-sided numerical derivative
     
@@ -195,6 +202,8 @@ def R_foc(R, bw, gamma, ds, xis, theta, pop, market_size, c_u, c_R, symmetric=Fa
             size of perturbation to measure derivative
         areatype : string
             whether using urban, suburban, or rural Hata loss function
+        market_weights : ndarray
+            (M,) array of weights for each market (or None if no weights)
 
     Returns
     -------
@@ -203,15 +212,20 @@ def R_foc(R, bw, gamma, ds, xis, theta, pop, market_size, c_u, c_R, symmetric=Fa
     """
 
     # Solve for derivatives
-    MR = pi_deriv_R(R, bw, gamma, ds, xis, theta, pop, market_size, c_u, symmetric=symmetric, impute_MVNO=impute_MVNO, q_0=q_0, eps=eps, areatype=areatype)
-    stations_deriv = infr.num_stations_deriv(R, market_size[:,np.newaxis])
+    MR = pi_deriv_R(R, bw, gamma, ds, xis, theta, pop, market_size, c_u, symmetric=symmetric, impute_MVNO=impute_MVNO, q_0=q_0, eps=eps, areatype=areatype, market_weights=market_weights, calc_q_carefully=calc_q_carefully)
+    if market_size.ndim == 1:
+        market_size = market_size[:,np.newaxis]
+    stations_deriv = infr.num_stations_deriv(R, market_size)
 
     # Solve for FOCs
-    foc = MR - stations_deriv * c_R
+    cost_deriv = stations_deriv * c_R
+    if market_weights is not None:
+        cost_deriv = cost_deriv * market_weights[:,np.newaxis]
+    foc = MR - cost_deriv
 
     return foc
 
-def combine_focs(R, p, bw, gamma, ds, xis, theta, pop, market_size, c_u, c_R, symmetric=False, print_msg=False, impute_MVNO={'impute': False}, q_0=None, eps_R=0.001, eps_p=0.001, areatype="urban"):
+def combine_focs(R, p, bw, gamma, ds, xis, theta, pop, market_size, c_u, c_R, symmetric=False, print_msg=False, impute_MVNO={'impute': False}, q_0=None, eps_R=0.001, eps_p=0.001, areatype="urban", R_fixed=False, market_weights=None, calc_q_carefully=False):
     """
         Return a combined array of FOCs that characterize an equilibrium, based on two-sided numerical derivative
     
@@ -256,6 +270,10 @@ def combine_focs(R, p, bw, gamma, ds, xis, theta, pop, market_size, c_u, c_R, sy
             size of perturbation to measure price derivative
         areatype : string
             whether using urban, suburban, or rural Hata loss function
+        R_fixed : bool
+            whether R is fixed or not (in which case FOCs are dropped)
+        market_weights : ndarray
+            (M,) array of weights for each market (or None if no weights)
             
     Returns
     -------
@@ -264,8 +282,8 @@ def combine_focs(R, p, bw, gamma, ds, xis, theta, pop, market_size, c_u, c_R, sy
     """
 
     if print_msg:
-        print(f"R: {R}")
-        print(f"p: {p}")
+        print(f"R: {R}", flush=True)
+        print(f"p: {p}", flush=True)
         
     F = np.unique(ds.firms).shape[0]
         
@@ -274,7 +292,8 @@ def combine_focs(R, p, bw, gamma, ds, xis, theta, pop, market_size, c_u, c_R, sy
     ds.data[:,:,pidx] = np.tile(p[np.newaxis,:], (1,F if symmetric else 1))
 
     # Solve for the infrastructure FOCs
-    infr_FOCs = R_foc(R, bw, gamma, ds, xis, theta, pop, market_size, c_u, c_R, symmetric=symmetric, impute_MVNO=impute_MVNO, q_0=q_0, eps=eps_R, areatype=areatype)
+    if not R_fixed:
+        infr_FOCs = R_foc(R, bw, gamma, ds, xis, theta, pop, market_size, c_u, c_R, symmetric=symmetric, impute_MVNO=impute_MVNO, q_0=q_0, eps=eps_R, areatype=areatype, market_weights=market_weights, calc_q_carefully=calc_q_carefully)
 
     # Solve for the channel capacity implied by radius R - NOTE: parallelize this for large number of markets
     cc = np.zeros(R.shape)
@@ -309,7 +328,7 @@ def combine_focs(R, p, bw, gamma, ds, xis, theta, pop, market_size, c_u, c_R, sy
     for m in range(M):
         select_m = np.arange(M) == m
         ds_temp.data = ds.data[select_m,:,:]
-        q[m,:] = transeq.q(cc_expand[select_m,:], ds_temp, xis_expand[select_m,:], theta, stations_expand[select_m,:], pop[select_m], impute_MVNO=impute_MVNO, q_0=q_0)[0,:] # 0 b/c we're doing this market-by-market
+        q[m,:] = transeq.q(cc_expand[select_m,:], ds_temp, xis_expand[select_m,:], theta, stations_expand[select_m,:], pop[select_m], impute_MVNO=impute_MVNO, q_0=q_0, calc_carefully=calc_q_carefully)[0,:] # 0 b/c we're doing this market-by-market
     
     # Update download speed
     qidx = ds.chars.index(ds.qname)
@@ -317,21 +336,135 @@ def combine_focs(R, p, bw, gamma, ds, xis, theta, pop, market_size, c_u, c_R, sy
     ds.data[:,:,qidx] = np.repeat(q, firm_counts, axis=1) # works b/c products are in order
 
     # Solve for the pricing FOCs
-    price_FOCs = pe.p_foc(p, c_u, cc, ds, xis, theta, stations, pop, symmetric=symmetric, impute_MVNO=impute_MVNO, q_0=q_0, eps=eps_p)
+    price_FOCs = pe.p_foc(p, c_u, cc, ds, xis, theta, stations, pop, symmetric=symmetric, impute_MVNO=impute_MVNO, q_0=q_0, eps=eps_p, market_weights=market_weights, calc_q_carefully=calc_q_carefully)
 
     # Combine FOCs into flattened array
-    foc = np.concatenate((np.reshape(infr_FOCs, (-1,)), price_FOCs))
+    if not R_fixed:
+        foc = np.concatenate((np.reshape(infr_FOCs, (-1,)), price_FOCs))
+    else:
+        foc = price_FOCs
 
     if print_msg:
-        #qs = transeq.q(cc, ds, xis, theta, stations, pop, impute_MVNO=impute_MVNO, q_0=q_0)
+#         qs = transeq.q(cc, ds, xis, theta, stations, pop, impute_MVNO=impute_MVNO, q_0=q_0, calc_carefully=calc_q_carefully)
 #         print(f"Ex: {de.E_x(ds, theta, ds.data, np.tile(qs, (R.shape[1])), ds.data[:,:,ds.chars.index(ds.dlimname)], blp.ycX(ds, theta, ds.data))[0,:,:]}")
-        print(f"s_j: {np.mean(blp.s_mj(ds, theta, ds.data, np.tile(xis, (1,F)) if symmetric else xis), axis=0)}")
-        #print(f"q: {np.mean(qs, axis=0)}")
+#         print(f"s_j: {np.mean(blp.s_mj(ds, theta, ds.data, np.tile(xis, (1,F)) if symmetric else xis), axis=0)}")
+#         print(f"q: {np.mean(qs, axis=0)}")
         #print(f"E[x*]: {np.mean(de.E_x(ds, theta, ds.data, np.tile(qs, (R.shape[1])), ds.data[:,:,ds.chars.index(ds.dlimname)], blp.ycX(ds, theta, ds.data)), axis=0)}")
         #print(f"E[u(x*)]: {np.mean(de.E_u(ds, theta, ds.data, np.tile(qs, (R.shape[1])), ds.data[:,:,ds.chars.index(ds.dlimname)], blp.ycX(ds, theta, ds.data)), axis=0)}")
-        print(f"foc: {foc}")
+        print(f"foc: {foc}", flush=True)
 
     return foc
+
+def profits(R, p, bw, gamma, ds, xis, theta, pop, market_size, c_u, c_R, print_msg=False, impute_MVNO={'impute': False}, q_0=None, areatype="urban", market_weights=None, calc_q_carefully=False):
+    """
+        Return array of profits (NOTE: doesn't currently support R_fixed or symmetric options
+    
+    Parameters
+    ----------
+        R : ndarray
+            (M,F) array of firm-market radii
+        p : ndarray
+            (J,) array of prices
+        bw : ndarray
+            (M,F) array of bandwidth in MHz
+        gamma : ndarray
+            (M,) array of spectral efficiencies
+        ds : DemandSystem
+            contains all the data about our markets
+        xis : ndarray 
+            (M,J) matrix of vertical demand components
+        theta : ndarray
+            (K,) array of demand parameters
+        pop : ndarray
+            (M,) array of market populations
+        market_size : ndarray
+            (M,) array of geographic size of markets in km^2
+        c_u : ndarray
+            (J,) array of per-user costs
+        c_R : ndarray
+            (M,F) array of per-tower costs
+        print_msg : bool
+            determines whether or not to print inputs and output
+        impute_MVNO : dict
+            dict with
+            'impute' : bool (whether to impute the Qs for MVNO)
+            'firms_share' (optional) : ndarray ((F-1,) array of whether firms share qualities with MVNOs)
+            'include' (optional) : bool (whether to include MVNO Q in returned Q)
+        q_0 : ndarray
+            (M,F) array of initial guess of q
+        areatype : string
+            whether using urban, suburban, or rural Hata loss function
+        market_weights : ndarray
+            (M,) array of weights for each market (or None if no weights)
+            
+    Returns
+    -------
+        profit : ndarray
+            (F,) array of profits
+    """
+
+    if print_msg:
+        print(f"R: {R}", flush=True)
+        print(f"p: {p}", flush=True)
+        
+    F = np.unique(ds.firms).shape[0]
+        
+    # Update price
+    pidx = ds.chars.index(ds.pname)
+    ds.data[:,:,pidx] = p[np.newaxis,:]
+
+    # Solve for the channel capacity implied by radius R - NOTE: parallelize this for large number of markets
+    cc = np.zeros(R.shape)
+    for m in range(R.shape[0]):
+        for f in range(R.shape[1]):
+            cc[m,f] = infr.rho_C_hex(bw[m,f], R[m,f], gamma[m], areatype=areatype)
+
+    # Solve for the number of stations implied by radius R
+    stations = infr.num_stations(R, market_size)
+    
+    # Create information about firms and markets used for quality
+    firms = np.unique(ds.firms)
+    M = R.shape[0]
+    F = firms.shape[0] # defined before but can change depending on what we're doing with MVNOs
+    if impute_MVNO['impute']: # if we impute MVNO quality (o/w there are no MVNOs)
+        firms = firms[:-1] # don't care about the MVNO firm in ds.firms
+        F -= 1
+        if impute_MVNO['include']: # if MVNO is needed for calculating shares
+            F += 1
+    
+    # Solve for download speeds
+    q = np.zeros((M,F))
+    ds_temp = copy.deepcopy(ds)
+    for m in range(M):
+        select_m = np.arange(M) == m
+        ds_temp.data = ds.data[select_m,:,:]
+        q[m,:] = transeq.q(cc[select_m,:], ds_temp, xis[select_m,:], theta, stations[select_m,:], pop[select_m], impute_MVNO=impute_MVNO, q_0=q_0, calc_carefully=calc_q_carefully)[0,:] # 0 b/c we're doing this market-by-market
+    
+    # Update download speed
+    qidx = ds.chars.index(ds.qname)
+    firm_counts = np.unique(ds.firms, return_counts=True)[1]
+    ds.data[:,:,qidx] = np.repeat(q, firm_counts, axis=1) # works b/c products are in order
+
+    # Solve for the profits
+    shares = blp.s_mj(ds, theta, ds.data, xis) * pop[:,np.newaxis]
+    if market_weights is not None:
+        shares = shares * market_weights[:,np.newaxis]
+    profit_jm = shares * (ds.data[:,:,pidx] - c_u[np.newaxis,:])
+    profit_f = np.zeros((R.shape[1],))
+    for f, firm in enumerate(firms):
+        station_cost = stations[:,f] * c_R[:,f]
+        if market_weights is not None:
+            station_cost = station_cost * market_weights[:,np.newaxis]
+        profit_f[f] = np.sum(profit_jm[:,ds.firms == firm]) - np.sum(station_cost)
+
+    if print_msg:
+#         print(f"qs: {q[0,0]}", flush=True)
+#         print(f"qs: {ds.data[0,:,qidx][ds.firms == (1)]}", flush=True)
+#         print(f"shares: {np.sum(blp.s_mj(ds, theta, ds.data, xis)[:,ds.firms == (1)], axis=1)[0]}", flush=True)
+#         print(f"station cost: {(stations[:,0] * c_R[:,0])[0]}", flush=True)
+        print(f"profits: {profit_f}", flush=True)
+
+    return profit_f
 
 def reshape_inputs(foc_shape, R_shape, p_shape, symmetric=False):
     """
@@ -364,7 +497,7 @@ def reshape_inputs(foc_shape, R_shape, p_shape, symmetric=False):
 
     return R, p
 
-def infrastructure_eqm(bw, gamma, ds, xis, theta, pop, market_size, c_u, c_R, R_0, p_0, symmetric=False, print_msg=False, impute_MVNO={'impute': False}, q_0=None, eps_R=0.001, eps_p=0.001, factor=100., R_fixed=False, areatype="urban"):
+def infrastructure_eqm(bw, gamma, ds, xis, theta, pop, market_size, c_u, c_R, R_0, p_0, symmetric=False, print_msg=False, impute_MVNO={'impute': False}, q_0=None, eps_R=0.001, eps_p=0.001, factor=100., R_fixed=False, areatype="urban", market_weights=None, method=None, calc_q_carefully=False):
     """
         Return the derivative of the profit function with respect to cell radius, based on two-sided numerical derivative
     
@@ -413,6 +546,10 @@ def infrastructure_eqm(bw, gamma, ds, xis, theta, pop, market_size, c_u, c_R, R_
             determine whether to allow R to respond in the equilibrium, if True use R_0 as R*
         areatype : string
             whether using urban, suburban, or rural Hata loss function
+        market_weights : ndarray
+            (M,) array of weights for each market (or None if no weights)
+        method : string (or None)
+            tells the function which solver to use
             
     Returns
     -------
@@ -427,7 +564,7 @@ def infrastructure_eqm(bw, gamma, ds, xis, theta, pop, market_size, c_u, c_R, R_
     """
 
     # Determine sizes of infrastructure and price arrays
-    R_shape = (ds.data.shape[0],np.unique(ds.firms).shape[0])
+    R_shape = (ds.data.shape[0],np.unique(ds.firms).shape[0] - 1 if impute_MVNO['impute'] else np.unique(ds.firms).shape[0])
     p_shape = (ds.data.shape[1],)
 
     # Define FOC 
@@ -435,13 +572,62 @@ def infrastructure_eqm(bw, gamma, ds, xis, theta, pop, market_size, c_u, c_R, R_
         x_shape = x.shape # save shape of x (b/c need it later and going to transform x)
         if R_fixed: # include R_0 for R if R is fixed
             x = np.concatenate((np.reshape(R_0, (-1,)), x))
-        foc = combine_focs(reshape_inputs(x, R_shape, p_shape, symmetric=symmetric)[0], reshape_inputs(x, R_shape, p_shape, symmetric=symmetric)[1], bw, gamma, ds, xis, theta, pop, market_size, c_u, c_R, symmetric, print_msg=print_msg, impute_MVNO=impute_MVNO, q_0=q_0, eps_p=eps_p, eps_R=eps_R, areatype=areatype)
-        if R_fixed: # only take price FOCs if R is fixed
-            foc = foc[-x_shape[0]:]
+        foc = combine_focs(reshape_inputs(x, R_shape, p_shape, symmetric=symmetric)[0], reshape_inputs(x, R_shape, p_shape, symmetric=symmetric)[1], bw, gamma, ds, xis, theta, pop, market_size, c_u, c_R, symmetric, print_msg=print_msg, impute_MVNO=impute_MVNO, q_0=q_0, eps_p=eps_p, eps_R=eps_R, areatype=areatype, R_fixed=R_fixed, market_weights=market_weights, calc_q_carefully=calc_q_carefully)
         return foc
 
     # Solve for the equilibrium
-    Rp_star, infodict, ier, msg = fsolve(eqm_foc, p_0 if R_fixed else np.concatenate((np.reshape(R_0, (-1,)), p_0)), full_output=True, factor=factor)
+    if method is None:
+        Rp_star, infodict, ier, msg = fsolve(eqm_foc, p_0 if R_fixed else np.concatenate((np.reshape(R_0, (-1,)), p_0)), full_output=True, factor=factor)
+    else:
+        if method != "iterative_maximization":
+            res = root(eqm_foc, p_0 if R_fixed else np.concatenate((np.reshape(R_0, (-1,)), p_0)), method=method)
+            Rp_star, ier, msg = res.x, res.success, res.message
+        else:
+            def profit_i(Rp_i, Rp_minusi, i):
+                R_shape_i = ((R_shape[0], 1))
+                p_shape_i = ((np.sum(ds.firms == (i+1)),))
+                R_shape_minusi = ((R_shape[0], R_shape[1] - 1))
+                p_shape_minusi = ((p_shape[0] - p_shape_i[0],))
+                R_i, p_i = reshape_inputs(Rp_i, R_shape_i, p_shape_i)
+                R_minusi, p_minusi = reshape_inputs(Rp_minusi, R_shape_minusi, p_shape_minusi)
+                R = np.concatenate((R_minusi[:,:i], R_i, R_minusi[:,i:]), axis=1)
+                p_i_start_idx = np.where(ds.firms == (i+1))[0][0]
+                p = np.concatenate((p_minusi[:p_i_start_idx], p_i, p_minusi[p_i_start_idx:])) # relies on products being in order, grouped by firm
+                return -profits(R, p, bw, gamma, ds, xis, theta, pop, market_size, c_u, c_R, print_msg=print_msg, impute_MVNO=impute_MVNO, q_0=q_0, areatype=areatype, market_weights=market_weights, calc_q_carefully=calc_q_carefully)[i]
+            Rp_diff = 1.0
+            Rp_eps = 0.001
+            iter_num = 0
+            max_iter = 100
+            Rp_0 = np.concatenate((np.reshape(R_0, (-1,)), p_0))
+            while (Rp_diff >= Rp_eps) and (iter_num < max_iter):
+                Rp_0_iter = np.copy(Rp_0)
+                for i in range(R_shape[1]):
+                    R_0, p_0 = reshape_inputs(Rp_0, R_shape, p_shape)
+                    R_0_i, p_0_i = R_0[:,np.arange(R_0.shape[1]) == i], p_0[ds.firms == (i+1)]
+                    R_0_minusi, p_0_minusi = R_0[:,np.arange(R_0.shape[1]) != i], p_0[ds.firms != (i+1)]
+                    Rp_0_i, Rp_0_minusi = np.concatenate((np.reshape(R_0_i, (-1,)), p_0_i)), np.concatenate((np.reshape(R_0_minusi, (-1,)), p_0_minusi))
+                    bounds = [(0.001, np.inf) for j in range(R_0.shape[0])] + [(-np.inf, np.inf) for j in range(p_0_i.shape[0])]
+                    res = minimize(profit_i, Rp_0_i, args=(Rp_0_minusi, i), bounds=bounds)
+                    if not res.success:
+                        print(f"\t\tEqm computation iteration {iter_num + 1}, firm {i + 1} failed maximization.", flush=True)
+                    R_shape_i = ((R_shape[0], 1))
+                    p_shape_i = ((np.sum(ds.firms == (i+1)),))
+                    R_i_star, p_i_star = reshape_inputs(res.x, R_shape_i, p_shape_i)
+                    R_0[:,i] = R_i_star[:,0]
+                    p_0[:,ds.firms == (i+1)] = p_i_star
+                    Rp_0 = np.concatenate((np.reshape(R_0, (-1,)), p_0))
+                Rp_diff_all = np.abs((Rp_0 - Rp_0_iter))
+                Rp_diff = np.max(Rp_diff)
+                if print_msg:
+                    print(f"\tEqm computation iteration {iter_num + 1} diff: {Rp_diff_all}", flush=True)
+                iter_num = iter_num + 1
+            if iter_num == max_iter:
+                ier = False
+            else:
+                ier = True
+            if print_msg:
+                print(f"Eqm computation worked in {iter_num} iterations", flush=True)
+            Rp_star = Rp_0
     if R_fixed: # include R_0 for R if R is fixed
         Rp_star = np.concatenate((np.reshape(R_0, (-1,)), Rp_star))
     R_star, p_star = reshape_inputs(Rp_star, R_shape, p_shape, symmetric=symmetric)
@@ -453,7 +639,7 @@ def infrastructure_eqm(bw, gamma, ds, xis, theta, pop, market_size, c_u, c_R, R_
     
     # Print error message if failed to converge
     if ier != 1:
-        print(f"Equilibrium computation failed for following reason: {msg}. Additional information: {infodict}")
+        print(f"Infrastructure/price equilibrium computation failed.", flush=True)
 
     # Calculate implied channel capacities
     cc = np.zeros(R_shape)
@@ -466,6 +652,9 @@ def infrastructure_eqm(bw, gamma, ds, xis, theta, pop, market_size, c_u, c_R, R_
 
     # Calculate implied download speeds
     q_star = np.zeros(R_shape)
+    if impute_MVNO['impute']: # add MVNOs if imputing MVNO
+        if impute_MVNO['include']:
+            q_star = np.zeros((R_shape[0], R_shape[1] + 1))
     M = R_shape[0]
     ds_temp = copy.deepcopy(ds)
     pidx = ds.chars.index(ds.pname)
@@ -474,11 +663,6 @@ def infrastructure_eqm(bw, gamma, ds, xis, theta, pop, market_size, c_u, c_R, R_
         select_m = np.arange(M) == m
         ds_temp.data = ds.data[select_m,:,:]
         q_star[m,:] = transeq.q(cc[select_m,:], ds_temp, xis[select_m,:], theta, stations[select_m,:], pop[select_m], impute_MVNO=impute_MVNO, q_0=q_0)[0,:] # 0 b/c we're doing this market-by-market
-    
-    # Add MVNOs if imputing MVNO
-    if impute_MVNO['impute']:
-        if impute_MVNO['include']:
-            q_star = np.concatenate((q_star, transeq.q_MVNO(q_star, impute_MVNO['firms_share'])[:,np.newaxis]), axis=1)
 
     success = ier == 1
     return R_star, p_star, q_star, success

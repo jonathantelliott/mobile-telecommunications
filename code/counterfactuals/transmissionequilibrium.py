@@ -110,7 +110,7 @@ def data_demand_rate(ds, xis, theta, Q, num_stations, pop):
         predicted_dbar_f[:,i] = np.sum(predicted_dbar_j[:,ds.firms == firm], axis=1)
     
     # Turn data demanded over month to demand rate
-    num_hours_in_day = 8.0 # people only use phone during the day
+    num_hours_in_day = 17.0 # people only use phone during the day
     num_seconds_month = 60.0 * 60.0 * num_hours_in_day * 31.0
     byte_to_bit_conv = 8.0
     Q_D = byte_to_bit_conv * predicted_dbar_f / num_stations / num_seconds_month # Mb per station per second
@@ -134,7 +134,7 @@ def q_MVNO(qs, firms_share):
             (M,) array of imputed MVNO qualities
     """
 
-    return np.mean(qs[:,firms_share], axis=1)
+    return np.average(qs, weights=firms_share, axis=1)
 
 def q_res(q, cc, ds, xis, theta, num_stations, pop, impute_MVNO={'impute': False}):
     """
@@ -184,7 +184,7 @@ def q_res(q, cc, ds, xis, theta, num_stations, pop, impute_MVNO={'impute': False
     
     return res
 
-def q(cc, ds, xis, theta, num_stations, pop, impute_MVNO={'impute': False}, q_0=None):
+def q(cc, ds, xis, theta, num_stations, pop, impute_MVNO={'impute': False}, q_0=None, calc_carefully=False):
     """
         Return the equilibrium quality
     
@@ -209,6 +209,8 @@ def q(cc, ds, xis, theta, num_stations, pop, impute_MVNO={'impute': False}, q_0=
             'include' (optional) : bool (whether to include MVNO Q in returned Q)
         q_0 : ndarray
             (M,F-1) array of initial guess of q
+        calc_carefully : bool
+            determines whether to use a small factor for fsolve
 
     Returns
     -------
@@ -233,12 +235,15 @@ def q(cc, ds, xis, theta, num_stations, pop, impute_MVNO={'impute': False}, q_0=
     
     # Solve for qs that satisfy transmission equilibrium
     q_eq = lambda qs: np.reshape(q_res(np.reshape(qs, cc.shape), cc, ds, xis, theta, num_stations_use, pop, impute_MVNO), (-1,))
-    q_star, infodict, ier, msg = fsolve(q_eq, np.reshape(q_0, (-1,)), full_output=True) # could add Jacobian, a bit more difficult
+    factor = 100.0
+    if calc_carefully:
+        factor = 0.1
+    q_star, infodict, ier, msg = fsolve(q_eq, np.reshape(q_0, (-1,)), full_output=True, factor=factor) # could add Jacobian, a bit more difficult
     q_star = np.reshape(q_star, cc.shape)
     
     # Print error message if failed to converge
     if ier != 1:
-        print(f"Transmission equilibrium computation failed for following reason: {msg}. Additional information: {infodict}")
+        print(f"Transmission equilibrium computation failed.", flush=True)
     
     # Add MVNOs if imputing MVNO
     if impute_MVNO['impute']:

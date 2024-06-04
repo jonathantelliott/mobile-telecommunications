@@ -32,7 +32,7 @@ import pickle
 # Imputated parameters
 
 # Load the DemandSystem created when estimating demand
-with open(f"{paths.data_path}demandsystem.obj", "rb") as file_ds:
+with open(f"{paths.data_path}demandsystem_0.obj", "rb") as file_ds:
     ds = pickle.load(file_ds)
 
 yc1idx = ds.dim3.index(ds.demolist[0])
@@ -59,19 +59,19 @@ demand_parameters = "\\begin{tabular}{l c c c c c c c c c c c c c c c c} \\hline
 # Estimates
 demand_parameters += "\\textit{Estimates} & & $\\hat{\\theta}_{p0}$ & & $\\hat{\\theta}_{pz}$ & & $\\hat{\\theta}_{v}$ & & $\\hat{\\theta}_{O}$ & & $\\hat{\\theta}_{d 0}$ & & $\\hat{\\theta}_{d z}$ & & $\\hat{\\theta}_{c}$ & & $\\hat{\\sigma}$ \\\\ \n"
 demand_parameters += "\\cline{3-3} \\cline{5-5} \\cline{7-7} \\cline{9-9} \\cline{11-11} \\cline{13-13} \\cline{15-15} \\cline{17-17} \n"
-demand_parameters += " & & " + " & & ".join(f"${param:.3f}$" for param in np.load(f"{paths.arrays_path}thetahat_e0_n0.npy")[:-2]) # not \theta_c or \theta_\sigma
-log_theta_c_est = np.load(f"{paths.arrays_path}thetahat_e0_n0.npy")[-2]
+demand_parameters += " & & " + " & & ".join(f"${param:.3f}$" for param in np.load(f"{paths.arrays_path}thetahat_0.npy")[:-2]) # not \theta_c or \theta_\sigma
+log_theta_c_est = np.load(f"{paths.arrays_path}thetahat_0.npy")[-2]
 theta_c_est = np.exp(log_theta_c_est)
 demand_parameters += f" & & ${Decimal(theta_c_est):.3e}}}$".replace("e", "\\mathrm{e}{")
-transform_theta_sigma_est = np.load(f"{paths.arrays_path}thetahat_e0_n0.npy")[-1]
+transform_theta_sigma_est = np.load(f"{paths.arrays_path}thetahat_0.npy")[-1]
 theta_sigma_est = np.exp(transform_theta_sigma_est) / (1.0 + np.exp(transform_theta_sigma_est))
 demand_parameters += f" & & ${theta_sigma_est:.3f}$"
 demand_parameters += " \\\\ \n"
 
 # Standard errors
-demand_parameters += " & & " + " & & ".join(f"(${param:.3f}$)" for param in np.load(f"{paths.arrays_path}stderrs_e0_n0.npy")[:-2])
-G = np.load(f"{paths.arrays_path}Gn_e0_n0.npy")
-W = np.load(f"{paths.arrays_path}What_e0_n0.npy")
+demand_parameters += " & & " + " & & ".join(f"(${param:.3f}$)" for param in np.load(f"{paths.arrays_path}stderrs_0.npy")[:-2])
+G = np.load(f"{paths.arrays_path}Gn_0.npy")
+W = np.load(f"{paths.arrays_path}What_0.npy")
 varmatrix = vm.V(G, W, np.linalg.inv(W))
 varmatrix_log_theta_c = varmatrix[-2,-2]
 varmatrix_exp_log_theta_c = varmatrix_log_theta_c * np.exp(log_theta_c_est)**2.0
@@ -102,8 +102,8 @@ def wtp_dlim(theta):
 demand_parameters += f"\\multicolumn{{2}}{{l}}{{}} & \\multicolumn{{5}}{{l}}{{1 GB plan $\\rightarrow$ 4 GB plan}} & & "
 demand_parameters += " & & ".join(f"${wtp:.2f}$ " + "\\euro{} " for wtp in wtp_dlim(np.load(f"{paths.arrays_path}thetahat_e0_n0.npy"))[(np.arange(9) + 1) % 2 == 1])
 demand_parameters += " \\\\ \n"
-wtp_dlim_low = wtp_dlim(np.load(f"{paths.arrays_path}thetahat_e0_n0.npy"))[0]
-wtp_dlim_high = wtp_dlim(np.load(f"{paths.arrays_path}thetahat_e0_n0.npy"))[-1]
+wtp_dlim_low = wtp_dlim(np.load(f"{paths.arrays_path}thetahat_0.npy"))[0]
+wtp_dlim_high = wtp_dlim(np.load(f"{paths.arrays_path}thetahat_0.npy"))[-1]
 create_file(f"{paths.stats_path}wtp_dlim_low.tex", f"{np.round(wtp_dlim_low, 2):.2f}")
 create_file(f"{paths.stats_path}wtp_dlim_high.tex", f"{np.round(wtp_dlim_high, 2):.2f}")
 
@@ -115,7 +115,7 @@ def wtp_v(theta):
 demand_parameters += f"\\multicolumn{{2}}{{l}}{{}} & \\multicolumn{{5}}{{l}}{{unlimited voice}} & & "
 demand_parameters += " & & ".join(f"${wtp:.2f}$ " + "\\euro{} " for wtp in wtp_v(np.load(f"{paths.arrays_path}thetahat_e0_n0.npy"))[(np.arange(9) + 1) % 2 == 1])
 demand_parameters += " \\\\ \n"
-wtp_v_med = wtp_v(np.load(f"{paths.arrays_path}thetahat_e0_n0.npy"))[4]
+wtp_v_med = wtp_v(np.load(f"{paths.arrays_path}thetahat_0.npy"))[4]
 create_file(f"{paths.stats_path}wtp_v_med.tex", f"{np.round(wtp_v_med, 2):.2f}")
 
 # Increase in download speed
@@ -131,8 +131,8 @@ def wtp_q(theta):
 demand_parameters += f"\\multicolumn{{2}}{{l}}{{}} & \\multicolumn{{5}}{{l}}{{10 Mbps $\\rightarrow$ 20 Mbps}} & & "
 demand_parameters += " & & ".join(f"${wtp:.2f}$ " + "\\euro{} " for wtp in wtp_q(np.load(f"{paths.arrays_path}thetahat_e0_n0.npy"))[(np.arange(9) + 1) % 2 == 1])
 demand_parameters += " \\\\ \n"
-wtp_q_low = wtp_q(np.load(f"{paths.arrays_path}thetahat_e0_n0.npy"))[0]
-wtp_q_high = wtp_q(np.load(f"{paths.arrays_path}thetahat_e0_n0.npy"))[-1]
+wtp_q_low = wtp_q(np.load(f"{paths.arrays_path}thetahat_0.npy"))[0]
+wtp_q_high = wtp_q(np.load(f"{paths.arrays_path}thetahat_0.npy"))[-1]
 create_file(f"{paths.stats_path}wtp_q_low.tex", f"{np.round(wtp_q_low, 2):.2f}")
 create_file(f"{paths.stats_path}wtp_q_high.tex", f"{np.round(wtp_q_high, 2):.2f}")
 
@@ -151,8 +151,8 @@ x_fontsize = "x-large"
 y_fontsize = "x-large"
 title_fontsize = "xx-large"
 
-predicted_dbar = np.load(f"{paths.dbar_path}predicted_e0_n0.npy")
-actual_dbar = np.load(f"{paths.dbar_path}actual_e0_n0.npy")
+predicted_dbar = np.load(f"{paths.dbar_path}predicted_0.npy")
+actual_dbar = np.load(f"{paths.dbar_path}actual_0.npy")
 
 fig, axs = plt.subplots(1, 3, figsize=(10, 4), sharex=True, sharey=True)
 title = ['$\\bar{d} = 1\\,000$', '$\\bar{d} = 4\\,000$', '$\\bar{d} = 8\\,000$']
@@ -168,10 +168,15 @@ plt.savefig(f"{paths.graphs_path}predict_vs_actual_dbar.pdf", bbox_inches = "tig
 
 fig, axs = plt.subplots(1, 1, figsize=(8.5, 4))
 products = ['$\\bar{d} = 1\\,000$', '$\\bar{d} = 4\\,000$', '$\\bar{d} = 8\\,000$']
+markers = ["o", "o", "x"]
+alphas = [0.5, 0.5, 0.5]
 for j in range(3):
     col = j % 3
-    axs.scatter(actual_dbar[:,j+2], predicted_dbar[:,j+2] * 1000, alpha=0.3, color=plt.rcParams['axes.prop_cycle'].by_key()['color'][j], label=products[j])
-axs.plot(np.arange(0,6000,50), np.arange(0,6000,50), linestyle="--", color="black", label="$45^{\\circ}$ line")
+    if j == 1:
+        axs.scatter(actual_dbar[:,j+2], predicted_dbar[:,j+2] * 1000, alpha=alphas[j], color=plt.rcParams['axes.prop_cycle'].by_key()['color'][j], label=products[j], marker=markers[j], facecolors="none", edgecolors=plt.rcParams['axes.prop_cycle'].by_key()['color'][j])
+    else:
+        axs.scatter(actual_dbar[:,j+2], predicted_dbar[:,j+2] * 1000, alpha=alphas[j], color=plt.rcParams['axes.prop_cycle'].by_key()['color'][j], label=products[j], marker=markers[j])
+axs.plot(np.arange(0,7000,50), np.arange(0,7000,50), linestyle="--", color="black", label="$45^{\\circ}$ line")
 axs.set_xlabel("actual consumption (MB)", fontsize=x_fontsize)
 axs.set_ylabel("predicted consumption (MB)", fontsize=y_fontsize)
 leg = axs.legend(loc="center right", ncol=1, fontsize=12, bbox_to_anchor=(1.3, 0.5), bbox_transform=axs.transAxes)

@@ -291,6 +291,27 @@ def num_stations(R, market_size):
 
     return stations
 
+def num_stations_inv(stations, market_size):
+    """
+        Return the number of radius associated with number of stations
+    
+    Parameters
+    ----------
+        stations : ndarray
+            array of number of stations associated with radii in each market
+        market_size : ndarray
+            array of geographic size of markets in km^2
+
+    Returns
+    -------
+        R : ndarray
+            array of radii
+    """
+    
+    R = np.sqrt(2. / (3. * np.sqrt(3.)) * market_size / stations)
+
+    return R
+
 def num_stations_deriv(R, market_size):
     """
         Return the derivative of the number of stations associated with radius

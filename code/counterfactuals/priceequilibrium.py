@@ -10,7 +10,7 @@ import counterfactuals.transmissionequilibrium as transeq
 import demand.blpextension as blp
 
 # %%
-def s_jacobian_p(p, cc, ds, xis, theta, num_stations, pop, symmetric=False, impute_MVNO={'impute': False}, q_0=None, eps=0.01, full=True):
+def s_jacobian_p(p, cc, ds, xis, theta, num_stations, pop, symmetric=False, impute_MVNO={'impute': False}, q_0=None, eps=0.01, full=True, market_weights=None, calc_q_carefully=False):
     """
         Return the Jacobian of the share function with respect to prices, based on two-sided numerical derivative
     
@@ -43,6 +43,8 @@ def s_jacobian_p(p, cc, ds, xis, theta, num_stations, pop, symmetric=False, impu
             size of perturbation to measure derivative
         full : bool
             determines whether taking full or partial elasticity
+        market_weights : ndarray
+            (M,) array of weights for each market (or None if no weights)
 
     Returns
     -------
@@ -93,14 +95,19 @@ def s_jacobian_p(p, cc, ds, xis, theta, num_stations, pop, symmetric=False, impu
             if not full:  # if not taking into account impact on download speed, just keep the same prices for determining download speeds
                 ds_high_temp.data[:,:,pidx] = p[np.newaxis,:] if not symmetric else np.tile(p, (num_firms,))[np.newaxis,:]
                 ds_low_temp.data[:,:,pidx] = p[np.newaxis,:] if not symmetric else np.tile(p, (num_firms,))[np.newaxis,:]
-            q_high[m,:] = transeq.q(cc[select_m,:], ds_high_temp, xis[select_m,:], theta, num_stations[select_m,:], pop[select_m], impute_MVNO=impute_MVNO, q_0=q_0)
-            q_low[m,:] = transeq.q(cc[select_m,:], ds_low_temp, xis[select_m,:], theta, num_stations[select_m,:], pop[select_m], impute_MVNO=impute_MVNO, q_0=q_0)
+            q_high[m,:] = transeq.q(cc[select_m,:], ds_high_temp, xis[select_m,:], theta, num_stations[select_m,:], pop[select_m], impute_MVNO=impute_MVNO, q_0=q_0, calc_carefully=calc_q_carefully)
+            q_low[m,:] = transeq.q(cc[select_m,:], ds_low_temp, xis[select_m,:], theta, num_stations[select_m,:], pop[select_m], impute_MVNO=impute_MVNO, q_0=q_0, calc_carefully=calc_q_carefully)
         ds_high.data[:,:,qidx] = np.repeat(q_high, firm_counts, axis=1) # only works b/c products in order
         ds_low.data[:,:,qidx] = np.repeat(q_low, firm_counts, axis=1) # only works b/c products in order
 
         # Calculate demand for each product
-        s_high = np.sum(blp.s_mj(ds_high, theta, ds_high.data, xis) * pop[:,np.newaxis], axis=0)
-        s_low = np.sum(blp.s_mj(ds_high, theta, ds_low.data, xis) * pop[:,np.newaxis], axis=0)
+        shares_pop_high = blp.s_mj(ds_high, theta, ds_high.data, xis) * pop[:,np.newaxis]
+        shares_pop_low = blp.s_mj(ds_high, theta, ds_low.data, xis) * pop[:,np.newaxis]
+        if market_weights is not None:
+            shares_pop_high = shares_pop_high * market_weights[:,np.newaxis]
+            shares_pop_low = shares_pop_low * market_weights[:,np.newaxis]
+        s_high = np.sum(shares_pop_high, axis=0)
+        s_low = np.sum(shares_pop_low, axis=0)
 
         # Calculate Jacobian for jth price
         select_firms = np.ones(s_high.shape[0], dtype=bool)
@@ -111,7 +118,7 @@ def s_jacobian_p(p, cc, ds, xis, theta, num_stations, pop, symmetric=False, impu
     # Return Jacobian
     return p_deriv
 
-def p_foc(p, c_u, cc, ds, xis, theta, num_stations, pop, symmetric=False, impute_MVNO={'impute': False}, q_0=None, eps=0.01):
+def p_foc(p, c_u, cc, ds, xis, theta, num_stations, pop, symmetric=False, impute_MVNO={'impute': False}, q_0=None, eps=0.01, market_weights=None, calc_q_carefully=False):
     """
         Return the FOCs of the pricing function, based on two-sided numerical derivative
     
@@ -144,6 +151,8 @@ def p_foc(p, c_u, cc, ds, xis, theta, num_stations, pop, symmetric=False, impute
             (M,F) array of initial guess of q
         eps : float
             size of perturbation to measure derivative
+        market_weights : ndarray
+            (M,) array of weights for each market (or None if no weights)
 
     Returns
     -------
@@ -167,10 +176,13 @@ def p_foc(p, c_u, cc, ds, xis, theta, num_stations, pop, symmetric=False, impute
         select_firms[p.shape[0]:] = False
 
     # Solve for shares for each product (summing across markets)
-    shares = np.sum(blp.s_mj(ds, theta, ds.data, xis) * pop[:,np.newaxis], axis=0)[select_firms]
+    shares_pop = blp.s_mj(ds, theta, ds.data, xis) * pop[:,np.newaxis]
+    if market_weights is not None:
+        shares_pop = shares_pop * market_weights[:,np.newaxis]
+    shares = np.sum(shares_pop, axis=0)[select_firms]
 
     # Solve for Jacobian of shares with respect to prices
-    Jac = s_jacobian_p(p, cc, ds, xis, theta, num_stations, pop, symmetric=symmetric, impute_MVNO=impute_MVNO, q_0=q_0, eps=eps)
+    Jac = s_jacobian_p(p, cc, ds, xis, theta, num_stations, pop, symmetric=symmetric, impute_MVNO=impute_MVNO, q_0=q_0, eps=eps, market_weights=market_weights, calc_q_carefully=calc_q_carefully)
 
     # Determine FOCs
     foc = np.zeros(p.shape)

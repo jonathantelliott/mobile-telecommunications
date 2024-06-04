@@ -29,6 +29,9 @@ import pickle
 #----------------------------------------------------------------
 #   Process Data
 #----------------------------------------------------------------
+
+task_id = int(sys.argv[1])
+reallocate_MVNO = task_id == 1
         
 df = pd.read_csv(f"{paths.data_path}demand_estimation_data.csv")
 if not paths.include_ROF_in_moments: # if we aren't including "Rest of France" in the moments
@@ -37,7 +40,6 @@ df_agg = pd.read_csv(f"{paths.data_path}agg_data.csv")
 
 prodfirms = df[['j_new','opcode']].values
 products, prod_idx = np.unique(prodfirms[:,0], return_index=True)
-print(products)
 firms = prodfirms[prod_idx,1]
 products = products.astype(int)
 firms = firms.astype(int)
@@ -57,6 +59,27 @@ df['mktshare_new_adjust'] = df['mktshare_new'] * share_ratio # adjust the Orange
 npaggshare = np.copy(npagg[1:]) # remove outside option
 s_notinclude = npagg[0] # outside option, but DemandSystem puts it back using share_of_outside_option below (done this way due to old way we constructed the code - ultimately this doesn't adjust the outside options at all
 share_of_outside_option = npagg[0]
+
+# Reallocate MVNO shares (if option selected)
+if reallocate_MVNO:
+    opcode_MVNO = 5
+    js_MVNO = np.unique(df[df['opcode'] == opcode_MVNO]['j_new'])
+    new_js = np.arange(np.max(np.unique(df['j_new'])) + 1, (np.max(np.unique(df['j_new'])) + 1) + (js_MVNO.shape[0] * 2))
+    markets_array = np.unique(df['market'])
+    rows_to_expand = df[df['j_new'].isin(js_MVNO)]
+    df = df[df['opcode'] != opcode_MVNO]
+    expanded_rows = pd.DataFrame()
+    for i, mno in enumerate([1, 2, 4]): # ORG, BYG, SFR
+        temp = rows_to_expand.copy()
+        temp['j_new'] = np.tile(js_MVNO + i * js_MVNO.shape[0], markets_array.shape[0])
+        df_mno = df[df['opcode'] == mno]
+        mno_q = df_mno[df_mno['j_new'] == np.min(df_mno['j_new'])]['q_ookla'].values
+        temp['q_ookla'] = np.repeat(mno_q, js_MVNO.shape[0])
+        expanded_rows = pd.concat([expanded_rows, temp], ignore_index=True)
+    df = pd.concat([df, expanded_rows], ignore_index=True)
+    df = df.sort_values(['market', 'j_new'])
+    products = np.unique(df['j_new'])
+    firms = np.concatenate((firms, np.ones(products.shape[0] - firms.shape[0], dtype=int) * opcode_MVNO))
 
 # Set up demand system
 chars = {'names': ['p', 'q_ookla', 'dlim', 'vunlimited','Orange'], 'norm': np.array([False, False, False, False, False])}
@@ -82,18 +105,16 @@ ds = demsys.DemandSystem(df,
 #   Price Elasticity Imputation
 #----------------------------------------------------------------
 
-task_id = int(sys.argv[1])
-elast_id = task_id // paths.div_ratios.shape[0]
-nest_id = task_id % paths.div_ratios.shape[0]
+elast_id = 0
+nest_id = 0
 avg_price_el = paths.avg_price_elasts[elast_id]
 div_ratio = paths.div_ratios[nest_id]
 
 print('Average price elasticity: ' + str(avg_price_el), flush=True)
 print('Div ratio: ' + str(div_ratio), flush=True)
 
-if task_id == 0: # only need to do this once
-    with open(f"{paths.data_path}demandsystem.obj", "wb") as file_ds:
-        pickle.dump(ds, file_ds)
+with open(f"{paths.data_path}demandsystem_{task_id}.obj", "wb") as file_ds:
+    pickle.dump(ds, file_ds)
 
 
 #----------------------------------------------------------------
@@ -134,14 +155,14 @@ print(str(stderrs_num), flush=True)
 #------------------------------------------------------------------
 #     Export
 #------------------------------------------------------------------
-np.save(paths.arrays_path + "thetahat_e" + str(elast_id) + "_n" + str(nest_id), thetahat)
-np.save(paths.arrays_path + "What_e" + str(elast_id) + "_n" + str(nest_id), What)
-np.save(paths.arrays_path + "Gn_e" + str(elast_id) + "_n" + str(nest_id), G_n)
-np.save(paths.arrays_path + "stderrs_e" + str(elast_id) + "_n" + str(nest_id), stderrs_num)
+np.save(paths.arrays_path + f"thetahat_{task_id}.npy", thetahat)
+np.save(paths.arrays_path + f"What_{task_id}.npy", What)
+np.save(paths.arrays_path + f"Gn_{task_id}.npy", G_n)
+np.save(paths.arrays_path + f"stderrs_{task_id}.npy", stderrs_num)
 
 df_est = pd.DataFrame(thetahat, index=['p0','pz','v','O','d0','dz','c','sigma'], columns=['estimate'])
 df_est['std_errs'] = stderrs_num
-df_est.to_csv(paths.res_path + "res_e" + str(elast_id) + "_n" + str(nest_id) + '.csv',index=True)
+df_est.to_csv(paths.res_path + f"res_{task_id}.csv",index=True)
 
 numdraws = 50
 chol_decomp = np.linalg.cholesky(varmatrix_num / float(N))
@@ -149,7 +170,7 @@ nu_s = np.random.normal(size=(thetahat.shape[0],numdraws))
 Nu_s = np.hstack((nu_s, -nu_s))
 theta_s = thetahat[:,np.newaxis] + np.matmul(chol_decomp, Nu_s)
 df_draws = pd.DataFrame(np.transpose(theta_s), columns=['p0','pz','v','O','d0','dz','c','sigma'])
-df_draws.to_csv(paths.asym_draws_path + 'asym_e' + str(elast_id) + "_n" + str(nest_id) + '.csv', index=False)
+df_draws.to_csv(paths.asym_draws_path + f"asym_{task_id}.csv", index=False)
 
 theta = np.copy(thetahat)
 X = ds.data
@@ -167,8 +188,8 @@ predicted_dbar = np.sum(Ex * weights, axis=2) / np.sum(weights, axis=2) # weight
 # difference between predicted and recorded
 dbaridx = ds.dim3.index(ds.dbarname)
 actual_dbar = X[:,ds.Oproducts,dbaridx]
-np.save(paths.dbar_path + 'predicted_e' + str(elast_id) + '_n' + str(nest_id) + '.npy', predicted_dbar)
-np.save(paths.dbar_path + 'actual_e' + str(elast_id) + '_n' + str(nest_id) + '.npy', actual_dbar)
+np.save(paths.dbar_path + f"predicted_{task_id}.npy", predicted_dbar)
+np.save(paths.dbar_path + f"actual_{task_id}.npy", actual_dbar)
 fig, axs = plt.subplots(1, 3, figsize=(10, 4), sharex=True, sharey=True)
 title = ['$\\bar{x} = 1000$', '$\\bar{x} = 4000$', '$\\bar{x} = 8000$']
 for j in range(3):
@@ -179,4 +200,4 @@ for j in range(3):
     axs[col].set_xlabel("actual (MB)", fontsize=12.0)
     axs[col].set_ylabel("predicted (MB)", fontsize=12.0)
 fig.tight_layout()
-plt.savefig(paths.graphs_path + "predict_vs_actual_dbar_e" + str(elast_id) + "_n" + str(nest_id) + ".pdf", bbox_inches="tight", transparent=True)
+plt.savefig(paths.graphs_path + f"predict_vs_actual_dbar_{task_id}.pdf", bbox_inches="tight", transparent=True)

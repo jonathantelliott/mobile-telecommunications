@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 #SBATCH --verbose
-#SBATCH --array=0
+#SBATCH --array=0-1
 #SBATCH --job-name=demand_est
 #SBATCH --output=slurm_%j.out
 #SBATCH --error=slurm_%j.err
