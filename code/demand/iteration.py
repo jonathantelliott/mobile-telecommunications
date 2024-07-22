@@ -1,6 +1,11 @@
+# %%
+# Import packages
 import autograd.numpy as np
 #import numpy as np
 
+# %%
+# Iteration functions for BLP contraction mapping
+# The following function come directly from PyBLP code (Conlon and Gortmaker, RAND, 2020) iteration.py, they are reproduced here so that the Autograd package is used rather than pure NumPy, citation in paper
 def linf_norm(x):
     return np.max(np.abs(x))
 
@@ -9,7 +14,6 @@ def safe_norm(norm, x):
         value = norm(x)
     return value if np.isfinite(value) else 0
 
-# the following function from pyblp iteration.py
 def squarem_iterator(initialguess, contraction, max_evaluations, norm, safe_norm, tol, scheme, step_min, step_max, step_factor):
     x = initialguess
     evaluations = 0

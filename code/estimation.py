@@ -4,9 +4,10 @@ from autograd import grad
 import time as time
 from scipy.optimize import minimize
 
-import demand.weightingmatrix as wm
 import demand.coefficients as coef
-import demand.gmm as gmm
+
+import gmm as gmm
+import weightingmatrix as wm
 
 def stage(ds, thetainit, W, avg_price_el, div_ratio):
     #----------------------------------------------------------------

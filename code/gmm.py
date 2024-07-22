@@ -1,9 +1,10 @@
 import autograd.numpy as np
 #import numpy as np
 
-import demand.moments as moments
-import demand.blpextension as blp
+import demand.demandfunctions as blp
 import demand.coefficients as coef
+
+import moments as moments
 
 def g(ds, theta, X, avg_price_el, div_ratio, nonOxis=None, all_markets=True):
     xis = blp.xi(ds, theta, X, nonOxis)

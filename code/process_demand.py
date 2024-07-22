@@ -21,8 +21,9 @@ import sys
 import demand.demandsystem as demsys
 import demand.dataexpressions as de
 import demand.coefficients as coef
-import demand.blpextension as blp
-import demand.variancematrix as vm
+import demand.demandfunctions as blp
+
+import variancematrix as vm
 
 import paths
 
@@ -100,7 +101,7 @@ def wtp_dlim(theta):
     wtp = (E_u_high - E_u_low) / theta_p
     return wtp
 demand_parameters += f"\\multicolumn{{2}}{{l}}{{}} & \\multicolumn{{5}}{{l}}{{1 GB plan $\\rightarrow$ 4 GB plan}} & & "
-demand_parameters += " & & ".join(f"${wtp:.2f}$ " + "\\euro{} " for wtp in wtp_dlim(np.load(f"{paths.arrays_path}thetahat_e0_n0.npy"))[(np.arange(9) + 1) % 2 == 1])
+demand_parameters += " & & ".join(f"${wtp:.2f}$ " + "\\euro{} " for wtp in wtp_dlim(np.load(f"{paths.arrays_path}thetahat_0.npy"))[(np.arange(9) + 1) % 2 == 1])
 demand_parameters += " \\\\ \n"
 wtp_dlim_low = wtp_dlim(np.load(f"{paths.arrays_path}thetahat_0.npy"))[0]
 wtp_dlim_high = wtp_dlim(np.load(f"{paths.arrays_path}thetahat_0.npy"))[-1]
@@ -113,7 +114,7 @@ def wtp_v(theta):
     wtp = theta[coef.v] / theta_p
     return wtp
 demand_parameters += f"\\multicolumn{{2}}{{l}}{{}} & \\multicolumn{{5}}{{l}}{{unlimited voice}} & & "
-demand_parameters += " & & ".join(f"${wtp:.2f}$ " + "\\euro{} " for wtp in wtp_v(np.load(f"{paths.arrays_path}thetahat_e0_n0.npy"))[(np.arange(9) + 1) % 2 == 1])
+demand_parameters += " & & ".join(f"${wtp:.2f}$ " + "\\euro{} " for wtp in wtp_v(np.load(f"{paths.arrays_path}thetahat_0.npy"))[(np.arange(9) + 1) % 2 == 1])
 demand_parameters += " \\\\ \n"
 wtp_v_med = wtp_v(np.load(f"{paths.arrays_path}thetahat_0.npy"))[4]
 create_file(f"{paths.stats_path}wtp_v_med.tex", f"{np.round(wtp_v_med, 2):.2f}")
@@ -129,7 +130,7 @@ def wtp_q(theta):
     wtp = (E_u_high - E_u_low) / theta_p
     return wtp
 demand_parameters += f"\\multicolumn{{2}}{{l}}{{}} & \\multicolumn{{5}}{{l}}{{10 Mbps $\\rightarrow$ 20 Mbps}} & & "
-demand_parameters += " & & ".join(f"${wtp:.2f}$ " + "\\euro{} " for wtp in wtp_q(np.load(f"{paths.arrays_path}thetahat_e0_n0.npy"))[(np.arange(9) + 1) % 2 == 1])
+demand_parameters += " & & ".join(f"${wtp:.2f}$ " + "\\euro{} " for wtp in wtp_q(np.load(f"{paths.arrays_path}thetahat_0.npy"))[(np.arange(9) + 1) % 2 == 1])
 demand_parameters += " \\\\ \n"
 wtp_q_low = wtp_q(np.load(f"{paths.arrays_path}thetahat_0.npy"))[0]
 wtp_q_high = wtp_q(np.load(f"{paths.arrays_path}thetahat_0.npy"))[-1]
@@ -151,8 +152,8 @@ x_fontsize = "x-large"
 y_fontsize = "x-large"
 title_fontsize = "xx-large"
 
-predicted_dbar = np.load(f"{paths.dbar_path}predicted_0.npy")
-actual_dbar = np.load(f"{paths.dbar_path}actual_0.npy")
+predicted_dbar = np.load(f"{paths.arrays_path}predicted_dbar_0.npy")
+actual_dbar = np.load(f"{paths.arrays_path}actual_dbar_0.npy")
 
 fig, axs = plt.subplots(1, 3, figsize=(10, 4), sharex=True, sharey=True)
 title = ['$\\bar{d} = 1\\,000$', '$\\bar{d} = 4\\,000$', '$\\bar{d} = 8\\,000$']
@@ -184,6 +185,7 @@ for lh in leg.legendHandles:
     lh.set_alpha(1.0)
 fig.tight_layout()
 plt.savefig(f"{paths.graphs_path}predict_vs_actual_dbar_alt.pdf", bbox_inches="tight")
+plt.savefig(f"{paths.graphs_path}figure6.pdf", bbox_inches="tight")
 
 create_file(f"{paths.stats_path}dbar_corr_low.tex", "{:.3f}".format(np.round(np.corrcoef(predicted_dbar[:,2], actual_dbar[:,2])[0,1], 3)))
 create_file(f"{paths.stats_path}dbar_corr_med.tex", "{:.3f}".format(np.round(np.corrcoef(predicted_dbar[:,3], actual_dbar[:,3])[0,1], 3)))

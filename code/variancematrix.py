@@ -1,8 +1,9 @@
 import autograd.numpy as np
 #import numpy as np
 
-import demand.blpextension as blp
-import demand.gmm as gmm
+import demand.demandfunctions as blp
+
+import gmm as gmm
 
 def V(G, W, S):
     return np.matmul(np.matmul(np.matmul(np.matmul(np.matmul(np.matmul(np.linalg.inv(np.matmul(np.matmul(G.T, W), G)), G.T), W), S), W), G), np.linalg.inv(np.matmul(np.matmul(G.T, W), G)))

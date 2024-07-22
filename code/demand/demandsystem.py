@@ -1,8 +1,7 @@
 import autograd.numpy as np
-#import numpy as np
 
 class DemandSystem:
-    def __init__(self, df, sortval, charlist, elist, demolist, aggshare, s0, prodlist, firmlist, outside_option_share, monthname='month', marketname='market', productname='j', pricename='p', qname='q', dlimname='dlim', dbarname='dbar', marketsharename='mktshare', msizename='msize', vunlimitedname='vunlimited', commit12name='commit12', commit24name='commit24', Oname='Orange', lowdataname='lowdata', highdataname='highdata', popdensname='pop_dens', include_ROF=True):
+    def __init__(self, df, charlist, elist, demolist, aggshare, s0, prodlist, firmlist, outside_option_share, monthname='month', marketname='market', productname='j', pricename='p', qname='q', dlimname='dlim', dbarname='dbar', marketsharename='mktshare', msizename='msize', vunlimitedname='vunlimited', commit12name='commit12', commit24name='commit24', Oname='Orange', lowdataname='lowdata', highdataname='highdata', popdensname='pop_dens', include_ROF=True, only_last_month=True):
         # Initial stuff
         if len(charlist['names']) == len(charlist['norm']):
             char = charlist['names']
@@ -14,8 +13,10 @@ class DemandSystem:
         
         # Process data
         # Change data into a numpy array for faster/easier processing
-        X = df[df[monthname] == 24] # limit to last month
-        #X = df[(df[monthname] == 24) & (df[yc1] > 100)] # limit to last month and drop the two weird observation
+        if (monthname in df.columns) and only_last_month:
+            X = df[df[monthname] == 24] # limit to last month
+        else:
+            X = df
         M = len(np.unique(X[marketname]))
         J = len(np.unique(prodlist))
         C = len(char) # characteristics
@@ -31,30 +32,9 @@ class DemandSystem:
         firmlist = firmlist[jkeep]
         J = len(prodlist)
         
-        # divide income deciles by 10,000
-        #yc1idx = dim3.index(demolist[0])
-        #yclastidx = yc1idx + len(demolist) - 1
-        #npdata[:,:,yc1idx:(yclastidx+1)] = npdata[:,:,yc1idx:(yclastidx+1)] / 10000.0
-        
-        # put population density in 1000s
-        #popdensidx = dim3.index(popdensname)
-        #npdata[:,:,popdensidx] = npdata[:,:,popdensidx] / 1000.0
-        
         # Identify Orange products
         Oproducts = firmlist == 1
         J_O = np.sum(Oproducts)
-        
-#         # Dealing with zeros in market shares for Orange products - not actually a concern b/c there aren't any
-#         ctr = 0
-#         mktshareloc = dim3.index(marketsharename)
-#         addepsilon = 0.00001
-#         for m in range(M):
-#             for j in range(J):
-#                 if npdata[m, j, mktshareloc] == 0 and Oproducts[j]:
-#                     npdata[m, j, mktshareloc] = addepsilon
-#                     ctr += 1
-#         if ctr > 0:
-#             print('Warning: ' + str(round(ctr / (M * J_O) * 100, 2)) + '% of product-market shares were 0. Shares changed to ' + str(addepsilon) + '.')
         
         # Get rid of outside option in Orange shares
         mktshareloc = dim3.index(marketsharename)

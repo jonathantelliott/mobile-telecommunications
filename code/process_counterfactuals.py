@@ -21,11 +21,11 @@ from itertools import combinations
 import paths
 
 import demand.demandsystem as demsys
-
-import counterfactuals.infrastructurefunctions as infr
-import counterfactuals.infrastructureequilibrium as ie
 import demand.coefficients as coef
-import demand.blpextension as blp
+import demand.demandfunctions as blp
+
+import supply.infrastructurefunctions as infr
+import supply.infrastructureequilibrium as ie
 
 import pickle
 
@@ -34,30 +34,13 @@ print_ = False
 save_ = True
 
 # %%
-avg_price_elasts = paths.avg_price_elasts
-div_ratios = paths.div_ratios
-
-# %%
-# Import infrastructure / quality data
-df_inf = pd.read_csv(f"{paths.data_path}infrastructure_clean.csv", engine="python") # engine helps encoding, error with commune names, but doesn't matter b/c not used
-df_inf = df_inf[df_inf['market'] > 0] # don't include Rest-of-France market
-df_q = pd.read_csv(f"{paths.data_path}quality_ookla.csv")
-df_q = df_q[df_q['market'] > 0] # don't include Rest-of-France market
-
-# %%
-# Load the DemandSystem created when estimating demand
-with open(f"{paths.data_path}demandsystem_0.obj", "rb") as file_ds:
-    ds = pickle.load(file_ds)
-    
-# Drop Rest-of-France market
-market_idx = ds.dim3.index(ds.marketname)
-market_numbers = np.max(ds.data[:,:,market_idx], axis=1)
-ds.data = ds.data[market_numbers > 0,:,:] # drop "Rest of France"# %%
+avg_price_elasts = np.load(f"{paths.arrays_path}avg_price_elasts.npy")
+div_ratios = np.load(f"{paths.arrays_path}div_ratios.npy")
 
 # %%
 # Define functions to load results
-c_u = lambda task_id: np.load(f"{paths.arrays_path}c_u_{task_id}.npy")
-c_R = lambda task_id: np.load(f"{paths.arrays_path}c_R_{task_id}.npy")
+c_u = lambda task_id: np.load(f"{paths.arrays_path}cost_c_u_{task_id}.npy")
+c_R = lambda task_id: np.load(f"{paths.arrays_path}cost_c_R_{task_id}.npy")
 
 p_stars = lambda task_id: np.load(f"{paths.arrays_path}p_stars_{task_id}.npy")
 R_stars = lambda task_id: np.load(f"{paths.arrays_path}R_stars_{task_id}.npy")
@@ -211,8 +194,8 @@ ccs_per_bw_longrunall = lambda task_id: np.load(f"{paths.arrays_path}ccs_per_bw_
 avg_path_losses_longrunall = lambda task_id: np.load(f"{paths.arrays_path}avg_path_losses_longrunall_{task_id}.npy")
 per_user_costs = lambda task_id: np.load(f"{paths.arrays_path}per_user_costs_{task_id}.npy")
 
-c_u_se = lambda task_id: np.load(f"{paths.arrays_path}c_u_se_{task_id}.npy")
-c_R_se = lambda task_id: np.load(f"{paths.arrays_path}c_R_se_{task_id}.npy")
+c_u_se = lambda task_id: np.load(f"{paths.arrays_path}cost_c_u_se_{task_id}.npy")
+c_R_se = lambda task_id: np.load(f"{paths.arrays_path}cost_c_R_se_{task_id}.npy")
 
 p_stars_se = lambda task_id: np.load(f"{paths.arrays_path}p_stars_se_{task_id}.npy")
 R_stars_se = lambda task_id: np.load(f"{paths.arrays_path}R_stars_se_{task_id}.npy")
@@ -361,9 +344,9 @@ ccs_per_bw_longrunall_se = lambda task_id: np.load(f"{paths.arrays_path}ccs_per_
 avg_path_losses_longrunall_se = lambda task_id: np.load(f"{paths.arrays_path}avg_path_losses_longrunall_se_{task_id}.npy")
 per_user_costs_se = lambda task_id: np.load(f"{paths.arrays_path}per_user_costs_se_{task_id}.npy")
 
-densities = lambda task_id: np.load(f"{paths.arrays_path}cntrfctl_densities_{task_id}.npy")
-densities_pops = lambda task_id: np.load(f"{paths.arrays_path}cntrfctl_densities_pop_{task_id}.npy")
-bw_vals = lambda task_id: np.load(f"{paths.arrays_path}cntrfctl_bw_vals_{task_id}.npy")
+densities = lambda task_id: np.load(f"{paths.arrays_path}cntrfctl_densities.npy")
+densities_pops = lambda task_id: np.load(f"{paths.arrays_path}cntrfctl_densities_pop.npy")
+bw_vals = lambda task_id: np.load(f"{paths.arrays_path}cntrfctl_bw_vals.npy")
 
 bw_by_firm = np.load(f"{paths.arrays_path}cntrfctl_bw_vals_by_firm.npy")
 list_MNOwoMVNO = np.load(f"{paths.arrays_path}cntrfctl_firms.npy")
@@ -419,29 +402,27 @@ if save_:
 
 fig, ax = plt.subplots(1, 1, figsize=(13,5))
 
-x_pos = [i for i, _ in enumerate(ds.firms)]
+x_pos = [i for i, _ in enumerate(np.load(f"{paths.arrays_path}ds_firms_0.npy"))]
 barlist = ax.bar(x_pos, c_u(default_task_id), yerr=1.96 * c_u_se(default_task_id), capsize=4.0)
 ax.set_ylabel("$\hat{c}_{u}$ (in \u20ac)", fontsize=15)
 ax.set_xticks(x_pos)
 
-dlimidx = ds.chars.index(ds.dlimname)
-vlimidx = ds.chars.index(ds.vunlimitedname)
-ax.set_xticklabels(["$\\bar{d} = " + str(int(dlim)) + "$, $v = " + str(int(ds.data[0,i,vlimidx])) + "$" for i, dlim in enumerate(ds.data[0,:,dlimidx])], rotation=60, ha="right")
+ax.set_xticklabels(["$\\bar{d} = " + str(int(dlim)) + "$, $v = " + str(int(np.load(f"{paths.arrays_path}ds_vlims_0.npy")[i])) + "$" for i, dlim in enumerate(np.load(f"{paths.arrays_path}ds_dlims_0.npy"))], rotation=60, ha="right")
 
 ax.spines['top'].set_visible(False)
 ax.spines['right'].set_visible(False)
 
 mnos = ["Orange", "SFR", "Free", "Bouygues", "MVNO"]
 
-for i, firm in enumerate(np.unique(ds.firms)):
+for i, firm in enumerate(np.unique(np.load(f"{paths.arrays_path}ds_firms_0.npy"))):
     mno_name = mnos[i]
-    x_loc = np.mean(np.arange(ds.J)[ds.firms == firm])
+    x_loc = np.mean(np.arange(np.load(f"{paths.arrays_path}ds_J_0.npy")[0])[np.load(f"{paths.arrays_path}ds_firms_0.npy") == firm])
     y_loc = 0.85 * np.max(c_u(default_task_id))
     color = plt.rcParams['axes.prop_cycle'].by_key()['color'][i]
     ax.text(x_loc, y_loc, mno_name, ha="center", fontsize=15, color=color)
 
-for i in range(ds.J):
-    barlist[i].set_color(plt.rcParams['axes.prop_cycle'].by_key()['color'][ds.firms[i]-1])
+for i in range(np.load(f"{paths.arrays_path}ds_J_0.npy")[0]):
+    barlist[i].set_color(plt.rcParams['axes.prop_cycle'].by_key()['color'][np.load(f"{paths.arrays_path}ds_firms_0.npy")[i]-1])
     barlist[i].set_alpha(0.7)
     
 plt.tight_layout()
@@ -480,8 +461,7 @@ if print_:
 # %%
 # Costs table
 
-dlimidx = ds.chars.index(ds.dlimname)
-dlims = ds.data[0,:,dlimidx]
+dlims = np.load(f"{paths.arrays_path}ds_dlims_0.npy")
 
 # Per-user costs
 
@@ -544,8 +524,8 @@ if save_:
 
 print("Values used in counterfactuals")
 print(f"c_R (per unit of bw): {np.mean(c_R(default_task_id)[:,np.array([True,True,False,True])]) * 201.0}")
-print(f"1 GB c_u: {np.mean(c_u(default_task_id)[ds.data[0,:,dlimidx] < 5000.0])}")
-print(f"10 GB c_u: {np.mean(c_u(default_task_id)[ds.data[0,:,dlimidx] >= 5000.0])}")
+print(f"1 GB c_u: {per_user_costs(default_task_id)[0]}")
+print(f"10 GB c_u: {per_user_costs(default_task_id)[1]}")
 
 if save_:
     create_file(f"{paths.stats_path}per_user_cost_lowdlim.tex", f"{per_user_costs(default_task_id)[0]:.2f}")
@@ -561,59 +541,51 @@ y_fontsize = "x-large"
 title_fontsize = "xx-large"
 
 # dlim = 1,000 prices
-axs[0,0].plot(num_firms_array, p_stars(default_task_id)[:,0], color="black", lw=lw, alpha=alpha)
-axs[0,0].plot(num_firms_array, p_stars(default_task_id)[:,0] + 1.96 * p_stars_se(default_task_id)[:,0], color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-axs[0,0].plot(num_firms_array, p_stars(default_task_id)[:,0] - 1.96 * p_stars_se(default_task_id)[:,0], color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+axs[0,0].plot(num_firms_array, p_stars(default_task_id)[:,0], color="black", lw=lw)
+axs[0,0].plot(num_firms_array, p_stars(default_task_id)[:,0] + 1.96 * p_stars_se(default_task_id)[:,0], color="black", lw=0.5 * lw, ls="--")
+axs[0,0].plot(num_firms_array, p_stars(default_task_id)[:,0] - 1.96 * p_stars_se(default_task_id)[:,0], color="black", lw=0.5 * lw, ls="--")
 axs[0,0].set_xlabel("number of firms", fontsize=x_fontsize)
 axs[0,0].set_ylabel("$p_{j}^{*}$ (in \u20ac)", fontsize=y_fontsize)
 axs[0,0].set_title("1$\,$000 MB plan prices", fontsize=title_fontsize)
 
 # dlim = 10,000 prices
-axs[0,1].plot(num_firms_array, p_stars(default_task_id)[:,1], color="black", lw=lw, alpha=alpha)
-axs[0,1].plot(num_firms_array, p_stars(default_task_id)[:,1] + 1.96 * p_stars_se(default_task_id)[:,1], color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-axs[0,1].plot(num_firms_array, p_stars(default_task_id)[:,1] - 1.96 * p_stars_se(default_task_id)[:,1], color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+axs[0,1].plot(num_firms_array, p_stars(default_task_id)[:,1], color="black", lw=lw)
+axs[0,1].plot(num_firms_array, p_stars(default_task_id)[:,1] + 1.96 * p_stars_se(default_task_id)[:,1], color="black", lw=0.5 * lw, ls="--")
+axs[0,1].plot(num_firms_array, p_stars(default_task_id)[:,1] - 1.96 * p_stars_se(default_task_id)[:,1], color="black", lw=0.5 * lw, ls="--")
 axs[0,1].set_xlabel("number of firms", fontsize=x_fontsize)
 axs[0,1].set_ylabel("$p_{j}^{*}$ (in \u20ac)", fontsize=y_fontsize)
 axs[0,1].set_title("10$\,$000 MB plan prices", fontsize=title_fontsize)
 
 # radius
-axs[0,2].plot(num_firms_array, num_stations_per_firm_stars(default_task_id) * 1000.0, color="black", lw=lw, alpha=alpha)
-axs[0,2].plot(num_firms_array, num_stations_per_firm_stars(default_task_id) * 1000.0 + 1.96 * num_stations_per_firm_stars_se(default_task_id) * 1000.0, color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-axs[0,2].plot(num_firms_array, num_stations_per_firm_stars(default_task_id) * 1000.0 - 1.96 * num_stations_per_firm_stars_se(default_task_id) * 1000.0, color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+axs[0,2].plot(num_firms_array, num_stations_per_firm_stars(default_task_id) * 1000.0, color="black", lw=lw)
+axs[0,2].plot(num_firms_array, num_stations_per_firm_stars(default_task_id) * 1000.0 + 1.96 * num_stations_per_firm_stars_se(default_task_id) * 1000.0, color="black", lw=0.5 * lw, ls="--")
+axs[0,2].plot(num_firms_array, num_stations_per_firm_stars(default_task_id) * 1000.0 - 1.96 * num_stations_per_firm_stars_se(default_task_id) * 1000.0, color="black", lw=0.5 * lw, ls="--")
 axs[0,2].set_xlabel("number of firms", fontsize=x_fontsize)
 axs[0,2].set_ylabel("number of stations\n(per 1000 people)", fontsize=y_fontsize)
 axs[0,2].set_title("number of stations / firm", fontsize=title_fontsize)
 
 # total number of stations
-axs[1,0].plot(num_firms_array, num_stations_stars(default_task_id) * 1000.0, color="black", lw=lw, alpha=alpha)
-axs[1,0].plot(num_firms_array, num_stations_stars(default_task_id) * 1000.0 + 1.96 * num_stations_stars_se(default_task_id) * 1000.0, color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-axs[1,0].plot(num_firms_array, num_stations_stars(default_task_id) * 1000.0 - 1.96 * num_stations_stars_se(default_task_id) * 1000.0, color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+axs[1,0].plot(num_firms_array, num_stations_stars(default_task_id) * 1000.0, color="black", lw=lw)
+axs[1,0].plot(num_firms_array, num_stations_stars(default_task_id) * 1000.0 + 1.96 * num_stations_stars_se(default_task_id) * 1000.0, color="black", lw=0.5 * lw, ls="--")
+axs[1,0].plot(num_firms_array, num_stations_stars(default_task_id) * 1000.0 - 1.96 * num_stations_stars_se(default_task_id) * 1000.0, color="black", lw=0.5 * lw, ls="--")
 axs[1,0].set_xlabel("number of firms", fontsize=x_fontsize)
 axs[1,0].set_ylabel("number of stations\n(per 1000 people)", fontsize=y_fontsize)
 axs[1,0].set_title("total number of stations", fontsize=title_fontsize)
 
 # path loss
-# axs[1,1].plot(num_firms_array, avg_path_losses(default_task_id), color="black", lw=lw, alpha=alpha)
-# axs[1,1].plot(num_firms_array, avg_path_losses(default_task_id) + 1.96 * avg_path_losses_se(default_task_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-# axs[1,1].plot(num_firms_array, avg_path_losses(default_task_id) - 1.96 * avg_path_losses_se(default_task_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-# axs[1,1].set_xlabel("number of firms", fontsize=x_fontsize)
-# axs[1,1].set_ylabel("dB", fontsize=y_fontsize)
-# axs[1,1].set_title("average path loss", fontsize=title_fontsize)
-axs[1,1].plot(num_firms_array, ccs_per_bw(default_task_id), color="black", lw=lw, alpha=alpha)
-axs[1,1].plot(num_firms_array, ccs_per_bw(default_task_id) + 1.96 * ccs_per_bw_se(default_task_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-axs[1,1].plot(num_firms_array, ccs_per_bw(default_task_id) - 1.96 * ccs_per_bw_se(default_task_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+axs[1,1].plot(num_firms_array, ccs_per_bw(default_task_id), color="black", lw=lw)
+axs[1,1].plot(num_firms_array, ccs_per_bw(default_task_id) + 1.96 * ccs_per_bw_se(default_task_id), color="black", lw=0.5 * lw, ls="--")
+axs[1,1].plot(num_firms_array, ccs_per_bw(default_task_id) - 1.96 * ccs_per_bw_se(default_task_id), color="black", lw=0.5 * lw, ls="--")
 axs[1,1].set_xlabel("number of firms", fontsize=x_fontsize)
 axs[1,1].set_ylabel("Mbps / MHz", fontsize=y_fontsize)
 axs[1,1].set_title("channel capacity / unit bw", fontsize=title_fontsize)
 axs[1,1].ticklabel_format(useOffset=False)
 
 # download speeds
-axs[1,2].plot(num_firms_array, q_stars(default_task_id), color="black", lw=lw, alpha=alpha, label="download speed")
-axs[1,2].plot(num_firms_array, q_stars(default_task_id) + 1.96 * q_stars_se(default_task_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-axs[1,2].plot(num_firms_array, q_stars(default_task_id) - 1.96 * q_stars_se(default_task_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-axs[1,2].plot(num_firms_array, ccs(default_task_id), color="black", lw=lw, alpha=0.9, ls=(0, (3, 1, 1, 1)), label="channel capacity")
-# axs[1,2].plot(num_firms_array, ccs(default_task_id) + 1.96 * ccs_se(default_task_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls=(0, (3, 1, 1, 1)))
-# axs[1,2].plot(num_firms_array, ccs(default_task_id) - 1.96 * ccs_se(default_task_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls=(0, (3, 1, 1, 1)))
+axs[1,2].plot(num_firms_array, q_stars(default_task_id), color="black", lw=lw, label="download speed")
+axs[1,2].plot(num_firms_array, q_stars(default_task_id) + 1.96 * q_stars_se(default_task_id), color="black", lw=0.5 * lw, ls="--")
+axs[1,2].plot(num_firms_array, q_stars(default_task_id) - 1.96 * q_stars_se(default_task_id), color="black", lw=0.5 * lw, ls="--")
+axs[1,2].plot(num_firms_array, ccs(default_task_id), color="black", lw=lw, ls=(0, (3, 1, 1, 1)), label="channel capacity")
 axs[1,2].set_xlabel("number of firms", fontsize=x_fontsize)
 axs[1,2].set_ylabel("$Q_{f}^{*}$ (in Mbps)", fontsize=y_fontsize)
 axs[1,2].set_title("download speeds", fontsize=title_fontsize)
@@ -625,21 +597,15 @@ min_y_num_stations_per_firm = np.nanmin(num_stations_per_firm_stars(default_task
 max_y_num_stations_per_firm = np.nanmax(num_stations_per_firm_stars(default_task_id) * 1000.0)
 min_y_num_stations = np.nanmin(num_stations_stars(default_task_id)[:] * 1000.0)
 max_y_num_stations = np.nanmax(num_stations_stars(default_task_id)[:] * 1000.0)
-# min_y_pl = np.nanmin(avg_path_losses(default_task_id)[:]) - 2.
-# max_y_pl = np.nanmax(avg_path_losses(default_task_id)[:]) + 2.
 min_y_q = np.minimum(np.nanmin(q_stars(default_task_id)[:]), np.nanmin(ccs(default_task_id)[1:]))
 max_y_q = np.maximum(np.nanmax(q_stars(default_task_id)[:]), np.nanmax(ccs(default_task_id)[1:]))
 diff_p = max_y_p - min_y_p
 diff_num_stations_per_firm = max_y_num_stations_per_firm - min_y_num_stations_per_firm
 diff_num_stations = max_y_num_stations - min_y_num_stations
-# diff_pl = max_y_pl - min_y_pl
 diff_q = max_y_q - min_y_q
 margin = 0.1
 for i in range(2):
     axs[0,i].set_ylim((min_y_p - margin * diff_p, max_y_p + margin * diff_p))
-# axs[0,2].set_ylim((min_y_num_stations_per_firm - margin * diff_num_stations_per_firm, max_y_num_stations_per_firm + margin * diff_num_stations_per_firm))
-# axs[1,0].set_ylim((min_y_num_stations - margin * diff_num_stations, max_y_num_stations + margin * diff_num_stations))
-# axs[1,1].set_ylim((min_y_pl - margin * diff_pl, max_y_pl + margin * diff_pl))
 axs[1,2].set_ylim((min_y_q - margin * diff_q, max_y_q + margin * diff_q))
 for i in range(2):
     for j in range(3):
@@ -651,110 +617,7 @@ plt.tight_layout()
 
 if save_:
     plt.savefig(f"{paths.graphs_path}counterfactual_variables_1gb10gb.pdf", bbox_inches = "tight", transparent=True)
-
-if print_:
-    plt.show()
-    
-# %%
-# Endogenous variables - number of firms - all fixed cost
-
-fig, axs = plt.subplots(2, 3, figsize=(12.0, 6.5), squeeze=False)
-
-x_fontsize = "x-large"
-y_fontsize = "x-large"
-title_fontsize = "xx-large"
-
-# dlim = 1,000 prices
-axs[0,0].plot(num_firms_array, p_stars_allfixed(default_task_id)[:,0], color="black", lw=lw, alpha=alpha)
-axs[0,0].plot(num_firms_array, p_stars_allfixed(default_task_id)[:,0] + 1.96 * p_stars_allfixed_se(default_task_id)[:,0], color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-axs[0,0].plot(num_firms_array, p_stars_allfixed(default_task_id)[:,0] - 1.96 * p_stars_allfixed_se(default_task_id)[:,0], color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-axs[0,0].set_xlabel("number of firms", fontsize=x_fontsize)
-axs[0,0].set_ylabel("$p_{j}^{*}$ (in \u20ac)", fontsize=y_fontsize)
-axs[0,0].set_title("1$\,$000 MB plan prices", fontsize=title_fontsize)
-
-# dlim = 10,000 prices
-axs[0,1].plot(num_firms_array, p_stars_allfixed(default_task_id)[:,1], color="black", lw=lw, alpha=alpha)
-axs[0,1].plot(num_firms_array, p_stars_allfixed(default_task_id)[:,1] + 1.96 * p_stars_allfixed_se(default_task_id)[:,1], color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-axs[0,1].plot(num_firms_array, p_stars_allfixed(default_task_id)[:,1] - 1.96 * p_stars_allfixed_se(default_task_id)[:,1], color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-axs[0,1].set_xlabel("number of firms", fontsize=x_fontsize)
-axs[0,1].set_ylabel("$p_{j}^{*}$ (in \u20ac)", fontsize=y_fontsize)
-axs[0,1].set_title("10$\,$000 MB plan prices", fontsize=title_fontsize)
-
-# radius
-axs[0,2].plot(num_firms_array, num_stations_per_firm_stars_allfixed(default_task_id) * 1000.0, color="black", lw=lw, alpha=alpha)
-axs[0,2].plot(num_firms_array, num_stations_per_firm_stars_allfixed(default_task_id) * 1000.0 + 1.96 * num_stations_per_firm_stars_allfixed_se(default_task_id) * 1000.0, color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-axs[0,2].plot(num_firms_array, num_stations_per_firm_stars_allfixed(default_task_id) * 1000.0 - 1.96 * num_stations_per_firm_stars_allfixed_se(default_task_id) * 1000.0, color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-axs[0,2].set_xlabel("number of firms", fontsize=x_fontsize)
-axs[0,2].set_ylabel("number of stations\n(per 1000 people)", fontsize=y_fontsize)
-axs[0,2].set_title("number of stations / firm", fontsize=title_fontsize)
-
-# total number of stations
-axs[1,0].plot(num_firms_array, num_stations_stars_allfixed(default_task_id) * 1000.0, color="black", lw=lw, alpha=alpha)
-axs[1,0].plot(num_firms_array, num_stations_stars_allfixed(default_task_id) * 1000.0 + 1.96 * num_stations_stars_allfixed_se(default_task_id) * 1000.0, color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-axs[1,0].plot(num_firms_array, num_stations_stars_allfixed(default_task_id) * 1000.0 - 1.96 * num_stations_stars_allfixed_se(default_task_id) * 1000.0, color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-axs[1,0].set_xlabel("number of firms", fontsize=x_fontsize)
-axs[1,0].set_ylabel("number of stations\n(per 1000 people)", fontsize=y_fontsize)
-axs[1,0].set_title("total number of stations", fontsize=title_fontsize)
-
-# path loss
-# axs[1,1].plot(num_firms_array, avg_path_losses_allfixed(default_task_id), color="black", lw=lw, alpha=alpha)
-# axs[1,1].plot(num_firms_array, avg_path_losses_allfixed(default_task_id) + 1.96 * avg_path_losses_allfixed_se(default_task_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-# axs[1,1].plot(num_firms_array, avg_path_losses_allfixed(default_task_id) - 1.96 * avg_path_losses_allfixed_se(default_task_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-# axs[1,1].set_xlabel("number of firms", fontsize=x_fontsize)
-# axs[1,1].set_ylabel("dB", fontsize=y_fontsize)
-# axs[1,1].set_title("average path loss", fontsize=title_fontsize)
-axs[1,1].plot(num_firms_array, ccs_per_bw_allfixed(default_task_id), color="black", lw=lw, alpha=alpha)
-axs[1,1].plot(num_firms_array, ccs_per_bw_allfixed(default_task_id) + 1.96 * ccs_per_bw_allfixed_se(default_task_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-axs[1,1].plot(num_firms_array, ccs_per_bw_allfixed(default_task_id) - 1.96 * ccs_per_bw_allfixed_se(default_task_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-axs[1,1].set_xlabel("number of firms", fontsize=x_fontsize)
-axs[1,1].set_ylabel("Mbps / MHz", fontsize=y_fontsize)
-axs[1,1].set_title("channel capacity / unit bw", fontsize=title_fontsize)
-axs[1,1].ticklabel_format(useOffset=False)
-
-# download speeds
-axs[1,2].plot(num_firms_array, q_stars_allfixed(default_task_id), color="black", lw=lw, alpha=alpha, label="download speed")
-axs[1,2].plot(num_firms_array, q_stars_allfixed(default_task_id) + 1.96 * q_stars_allfixed_se(default_task_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-axs[1,2].plot(num_firms_array, q_stars_allfixed(default_task_id) - 1.96 * q_stars_allfixed_se(default_task_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-axs[1,2].plot(num_firms_array, ccs_allfixed(default_task_id), color="black", lw=lw, alpha=0.9, ls=(0, (3, 1, 1, 1)), label="channel capacity")
-# axs[1,2].plot(num_firms_array, ccs_allfixed(default_task_id) + 1.96 * ccs_allfixed_se(default_task_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls=(0, (3, 1, 1, 1)))
-# axs[1,2].plot(num_firms_array, ccs_allfixed(default_task_id) - 1.96 * ccs_allfixed_se(default_task_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls=(0, (3, 1, 1, 1)))
-axs[1,2].set_xlabel("number of firms", fontsize=x_fontsize)
-axs[1,2].set_ylabel("$Q_{f}^{*}$ (in Mbps)", fontsize=y_fontsize)
-axs[1,2].set_title("download speeds", fontsize=title_fontsize)
-
-# Set axis limits
-min_y_p = np.nanmin(p_stars_allfixed(default_task_id)[1:,:]) - 2.0
-max_y_p = np.nanmax(p_stars_allfixed(default_task_id)[1:,:]) + 5.0
-min_y_num_stations_per_firm = np.nanmin(num_stations_per_firm_stars_allfixed(default_task_id) * 1000.0)
-max_y_num_stations_per_firm = np.nanmax(num_stations_per_firm_stars_allfixed(default_task_id) * 1000.0)
-min_y_num_stations = np.nanmin(num_stations_stars_allfixed(default_task_id)[:] * 1000.0)
-max_y_num_stations = np.nanmax(num_stations_stars_allfixed(default_task_id)[:] * 1000.0)
-# min_y_pl = np.nanmin(avg_path_losses(default_task_id)[:]) - 2.
-# max_y_pl = np.nanmax(avg_path_losses(default_task_id)[:]) + 2.
-min_y_q = np.minimum(np.nanmin(q_stars_allfixed(default_task_id)[:]), np.nanmin(ccs_allfixed(default_task_id)[1:]))
-max_y_q = np.maximum(np.nanmax(q_stars_allfixed(default_task_id)[:]), np.nanmax(ccs_allfixed(default_task_id)[1:]))
-diff_p = max_y_p - min_y_p
-diff_num_stations_per_firm = max_y_num_stations_per_firm - min_y_num_stations_per_firm
-diff_num_stations = max_y_num_stations - min_y_num_stations
-# diff_pl = max_y_pl - min_y_pl
-diff_q = max_y_q - min_y_q
-margin = 0.1
-for i in range(2):
-    axs[0,i].set_ylim((min_y_p - margin * diff_p, max_y_p + margin * diff_p))
-# axs[0,2].set_ylim((min_y_num_stations_per_firm - margin * diff_num_stations_per_firm, max_y_num_stations_per_firm + margin * diff_num_stations_per_firm))
-# axs[1,0].set_ylim((min_y_num_stations - margin * diff_num_stations, max_y_num_stations + margin * diff_num_stations))
-# axs[1,1].set_ylim((min_y_pl - margin * diff_pl, max_y_pl + margin * diff_pl))
-axs[1,2].set_ylim((min_y_q - margin * diff_q, max_y_q + margin * diff_q))
-for i in range(2):
-    for j in range(3):
-        axs[i,j].set_xticks(num_firms_array)
-        
-axs[1,2].legend(loc="best")
-
-plt.tight_layout()
-
-if save_:
-    plt.savefig(f"{paths.graphs_path}counterfactual_variables_1gb10gb_allfixed.pdf", bbox_inches = "tight", transparent=True)
+    plt.savefig(f"{paths.graphs_path}figure7.pdf", bbox_inches = "tight", transparent=True)
 
 if print_:
     plt.show()
@@ -769,15 +632,15 @@ y_fontsize = "large"
 title_fontsize = "x-large"
     
 # dlim = 1,000 elasticities
-axs[0,0].plot(num_firms_array, partial_elasts(default_task_id)[:,0], lw=lw, alpha=alpha, color="black", ls="--", label="partial")
-axs[0,0].plot(num_firms_array, full_elasts(default_task_id)[:,0], lw=lw, alpha=alpha, color="black", label="full")
+axs[0,0].plot(num_firms_array, partial_elasts(default_task_id)[:,0], lw=lw, color="black", ls="--", label="partial")
+axs[0,0].plot(num_firms_array, full_elasts(default_task_id)[:,0], lw=lw, color="black", label="full")
 axs[0,0].set_xlabel("number of firms", fontsize=x_fontsize)
 axs[0,0].legend(loc="upper right")
 axs[0,0].set_title("1$\,$000 MB plan", fontsize=title_fontsize)
 
 # dlim = 10,000 elasticities
-axs[0,1].plot(num_firms_array, partial_elasts(default_task_id)[:,1], lw=lw, alpha=alpha, color="black", ls="--", label="partial")
-axs[0,1].plot(num_firms_array, full_elasts(default_task_id)[:,1], lw=lw, alpha=alpha, color="black", label="full")
+axs[0,1].plot(num_firms_array, partial_elasts(default_task_id)[:,1], lw=lw, color="black", ls="--", label="partial")
+axs[0,1].plot(num_firms_array, full_elasts(default_task_id)[:,1], lw=lw, color="black", label="full")
 axs[0,1].set_xlabel("number of firms", fontsize=x_fontsize)
 axs[0,1].legend(loc="upper right")
 axs[0,1].set_title("10$\,$000 MB plan", fontsize=title_fontsize)
@@ -793,6 +656,7 @@ plt.tight_layout()
 
 if save_:
     plt.savefig(f"{paths.graphs_path}counterfactual_elasticities_1gb10gb.pdf", bbox_inches = "tight", transparent=True)
+    plt.savefig(f"{paths.graphs_path}figure8.pdf", bbox_inches = "tight", transparent=True)
 
 if print_:
     plt.show()
@@ -808,25 +672,25 @@ title_fontsize = "xx-large"
 title_pad = 15.0
 
 # partial_Pif_partial_bf
-axs[0,0].plot(num_firms_array, partial_diffPif_partial_bf_allfixed(default_task_id), color="black", lw=lw, alpha=alpha)
-axs[0,0].plot(num_firms_array, partial_diffPif_partial_bf_allfixed(default_task_id) + 1.96 * partial_diffPif_partial_bf_allfixed_se(default_task_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-axs[0,0].plot(num_firms_array, partial_diffPif_partial_bf_allfixed(default_task_id) - 1.96 * partial_diffPif_partial_bf_allfixed_se(default_task_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+axs[0,0].plot(num_firms_array, partial_diffPif_partial_bf_allfixed(default_task_id), color="black", lw=lw)
+axs[0,0].plot(num_firms_array, partial_diffPif_partial_bf_allfixed(default_task_id) + 1.96 * partial_diffPif_partial_bf_allfixed_se(default_task_id), color="black", lw=0.5 * lw, ls="--")
+axs[0,0].plot(num_firms_array, partial_diffPif_partial_bf_allfixed(default_task_id) - 1.96 * partial_diffPif_partial_bf_allfixed_se(default_task_id), color="black", lw=0.5 * lw, ls="--")
 axs[0,0].set_xlabel("number of firms", fontsize=x_fontsize)
 axs[0,0].set_ylabel("\u20ac / person / MHz", fontsize=y_fontsize)
 axs[0,0].set_title("$d \\Pi_{f} / d B_{f} - d \\Pi_{f} / d B_{f^{\\prime}}$", fontsize=title_fontsize, pad=title_pad)
 
 # partial_Pif_partial_b
-axs[0,1].plot(num_firms_array, partial_Pif_partial_b_allfixed(default_task_id), color="black", lw=lw, alpha=alpha)
-axs[0,1].plot(num_firms_array, partial_Pif_partial_b_allfixed(default_task_id) + 1.96 * partial_Pif_partial_b_allfixed_se(default_task_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-axs[0,1].plot(num_firms_array, partial_Pif_partial_b_allfixed(default_task_id) - 1.96 * partial_Pif_partial_b_allfixed_se(default_task_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+axs[0,1].plot(num_firms_array, partial_Pif_partial_b_allfixed(default_task_id), color="black", lw=lw)
+axs[0,1].plot(num_firms_array, partial_Pif_partial_b_allfixed(default_task_id) + 1.96 * partial_Pif_partial_b_allfixed_se(default_task_id), color="black", lw=0.5 * lw, ls="--")
+axs[0,1].plot(num_firms_array, partial_Pif_partial_b_allfixed(default_task_id) - 1.96 * partial_Pif_partial_b_allfixed_se(default_task_id), color="black", lw=0.5 * lw, ls="--")
 axs[0,1].set_xlabel("number of firms", fontsize=x_fontsize)
 axs[0,1].set_ylabel("\u20ac / person / MHz", fontsize=y_fontsize)
 axs[0,1].set_title("$d \\Pi_{f} / d B$", fontsize=title_fontsize, pad=title_pad)
 
 # partial_CS_partial_b
-axs[0,2].plot(num_firms_array, partial_CS_partial_b_allfixed(default_task_id), color="black", lw=lw, alpha=alpha)
-axs[0,2].plot(num_firms_array, partial_CS_partial_b_allfixed(default_task_id) + 1.96 * partial_CS_partial_b_allfixed_se(default_task_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-axs[0,2].plot(num_firms_array, partial_CS_partial_b_allfixed(default_task_id) - 1.96 * partial_CS_partial_b_allfixed_se(default_task_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+axs[0,2].plot(num_firms_array, partial_CS_partial_b_allfixed(default_task_id), color="black", lw=lw)
+axs[0,2].plot(num_firms_array, partial_CS_partial_b_allfixed(default_task_id) + 1.96 * partial_CS_partial_b_allfixed_se(default_task_id), color="black", lw=0.7 * lw, ls="--")
+axs[0,2].plot(num_firms_array, partial_CS_partial_b_allfixed(default_task_id) - 1.96 * partial_CS_partial_b_allfixed_se(default_task_id), color="black", lw=0.7 * lw, ls="--")
 axs[0,2].set_xlabel("number of firms", fontsize=x_fontsize)
 axs[0,2].set_ylabel("\u20ac / person / MHz", fontsize=y_fontsize)
 axs[0,2].set_title("$d CS / d B$", fontsize=title_fontsize, pad=title_pad)
@@ -861,25 +725,25 @@ if save_:
 fig, axs = plt.subplots(1, 3, figsize=(9.0,3.5), sharex=True, squeeze=False)
 
 # partial_Pif_partial_bf
-axs[0,0].plot(num_firms_array, partial_diffPif_partial_bf_allbw(default_task_id), color="black", lw=lw, alpha=alpha)
-axs[0,0].plot(num_firms_array, partial_diffPif_partial_bf_allbw(default_task_id) + 1.96 * partial_diffPif_partial_bf_allbw_se(default_task_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-axs[0,0].plot(num_firms_array, partial_diffPif_partial_bf_allbw(default_task_id) - 1.96 * partial_diffPif_partial_bf_allbw_se(default_task_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+axs[0,0].plot(num_firms_array, partial_diffPif_partial_bf_allbw(default_task_id), color="black", lw=lw)
+axs[0,0].plot(num_firms_array, partial_diffPif_partial_bf_allbw(default_task_id) + 1.96 * partial_diffPif_partial_bf_allbw_se(default_task_id), color="black", lw=0.5 * lw, ls="--")
+axs[0,0].plot(num_firms_array, partial_diffPif_partial_bf_allbw(default_task_id) - 1.96 * partial_diffPif_partial_bf_allbw_se(default_task_id), color="black", lw=0.5 * lw, ls="--")
 axs[0,0].set_xlabel("number of firms", fontsize=x_fontsize)
 axs[0,0].set_ylabel("\u20ac / person / MHz", fontsize=y_fontsize)
 axs[0,0].set_title("$d \\Pi_{f} / d B_{f} - d \\Pi_{f} / d B_{f^{\\prime}}$", fontsize=title_fontsize, pad=title_pad)
 
 # partial_Pif_partial_b
-axs[0,1].plot(num_firms_array, partial_Pif_partial_b_allbw(default_task_id), color="black", lw=lw, alpha=alpha)
-axs[0,1].plot(num_firms_array, partial_Pif_partial_b_allbw(default_task_id) + 1.96 * partial_Pif_partial_b_allbw_se(default_task_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-axs[0,1].plot(num_firms_array, partial_Pif_partial_b_allbw(default_task_id) - 1.96 * partial_Pif_partial_b_allbw_se(default_task_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+axs[0,1].plot(num_firms_array, partial_Pif_partial_b_allbw(default_task_id), color="black", lw=lw)
+axs[0,1].plot(num_firms_array, partial_Pif_partial_b_allbw(default_task_id) + 1.96 * partial_Pif_partial_b_allbw_se(default_task_id), color="black", lw=0.5 * lw, ls="--")
+axs[0,1].plot(num_firms_array, partial_Pif_partial_b_allbw(default_task_id) - 1.96 * partial_Pif_partial_b_allbw_se(default_task_id), color="black", lw=0.5 * lw, ls="--")
 axs[0,1].set_xlabel("number of firms", fontsize=x_fontsize)
 axs[0,1].set_ylabel("\u20ac / person / MHz", fontsize=y_fontsize)
 axs[0,1].set_title("$d \\Pi_{f} / d B$", fontsize=title_fontsize, pad=title_pad)
 
 # partial_CS_partial_b
-axs[0,2].plot(num_firms_array, partial_CS_partial_b_allbw(default_task_id), color="black", lw=lw, alpha=alpha)
-axs[0,2].plot(num_firms_array, partial_CS_partial_b_allbw(default_task_id) + 1.96 * partial_CS_partial_b_allbw_se(default_task_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-axs[0,2].plot(num_firms_array, partial_CS_partial_b_allbw(default_task_id) - 1.96 * partial_CS_partial_b_allbw_se(default_task_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
+axs[0,2].plot(num_firms_array, partial_CS_partial_b_allbw(default_task_id), color="black", lw=lw)
+axs[0,2].plot(num_firms_array, partial_CS_partial_b_allbw(default_task_id) + 1.96 * partial_CS_partial_b_allbw_se(default_task_id), color="black", lw=0.5 * lw, ls="--")
+axs[0,2].plot(num_firms_array, partial_CS_partial_b_allbw(default_task_id) - 1.96 * partial_CS_partial_b_allbw_se(default_task_id), color="black", lw=0.5 * lw, ls="--")
 axs[0,2].set_xlabel("number of firms", fontsize=x_fontsize)
 axs[0,2].set_ylabel("\u20ac / person / MHz", fontsize=y_fontsize)
 axs[0,2].set_title("$d CS / d B$", fontsize=title_fontsize, pad=title_pad)
@@ -901,6 +765,7 @@ plt.tight_layout()
 
 if save_:
     plt.savefig(f"{paths.graphs_path}counterfactual_bw_deriv_allbw_1gb10gb.pdf", bbox_inches = "tight", transparent=True)
+    plt.savefig(f"{paths.graphs_path}figure11.pdf", bbox_inches = "tight", transparent=True)
 
 if print_:
     plt.show()
@@ -960,28 +825,22 @@ y_fontsize = "large"
 title_fontsize = "x-large"
 
 # consumer surplus
-axs[0,0].plot(num_firms_array_extend, cs(default_task_id), color="black", lw=lw, alpha=alpha)
-#axs[0,0].plot(num_firms_array_extend, cs(default_task_id) + 1.96 * cs_se(default_task_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-#axs[0,0].plot(num_firms_array_extend, cs(default_task_id) - 1.96 * cs_se(default_task_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-axs[0,0].axvline(x=num_firms_array_extend[np.nanargmax(cs(default_task_id))], color="black", linestyle="--", alpha=0.25)
+axs[0,0].plot(num_firms_array_extend, cs(default_task_id), color="black", lw=lw)
+axs[0,0].axvline(x=num_firms_array_extend[np.nanargmax(cs(default_task_id))], color="black", linestyle="--")
 axs[0,0].set_xlabel("number of firms", fontsize=x_fontsize)
 axs[0,0].set_ylabel("\u20ac / person", fontsize=y_fontsize)
 axs[0,0].set_title("consumer surplus", fontsize=title_fontsize)
 
 # producer surplus
-axs[0,1].plot(num_firms_array_extend, ps(default_task_id), color="black", lw=lw, alpha=alpha)
-#axs[0,1].plot(num_firms_array_extend, ps(default_task_id) + 1.96 * ps_se(default_task_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-#axs[0,1].plot(num_firms_array_extend, ps(default_task_id) - 1.96 * ps_se(default_task_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-axs[0,1].axvline(x=num_firms_array_extend[np.nanargmax(ps(default_task_id))], color="black", linestyle="--", alpha=0.25)
+axs[0,1].plot(num_firms_array_extend, ps(default_task_id), color="black", lw=lw)
+axs[0,1].axvline(x=num_firms_array_extend[np.nanargmax(ps(default_task_id))], color="black", linestyle="--")
 axs[0,1].set_xlabel("number of firms", fontsize=x_fontsize)
 axs[0,1].set_ylabel("\u20ac / person", fontsize=y_fontsize)
 axs[0,1].set_title("producer surplus", fontsize=title_fontsize)
 
 # total surplus
-axs[0,2].plot(num_firms_array_extend, ts(default_task_id), color="black", lw=lw, alpha=alpha)
-#axs[0,2].plot(num_firms_array_extend, ts(default_task_id) + 1.96 * ts_se(default_task_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-#axs[0,2].plot(num_firms_array_extend, ts(default_task_id) - 1.96 * ts_se(default_task_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-axs[0,2].axvline(x=num_firms_array_extend[np.nanargmax(ts(default_task_id))], color="black", linestyle="--", alpha=0.25)
+axs[0,2].plot(num_firms_array_extend, ts(default_task_id), color="black", lw=lw)
+axs[0,2].axvline(x=num_firms_array_extend[np.nanargmax(ts(default_task_id))], color="black", linestyle="--")
 axs[0,2].set_xlabel("number of firms", fontsize=x_fontsize)
 axs[0,2].set_ylabel("\u20ac / person", fontsize=y_fontsize)
 axs[0,2].set_title("total surplus", fontsize=title_fontsize)
@@ -1006,6 +865,7 @@ plt.tight_layout()
 
 if save_:
     plt.savefig(f"{paths.graphs_path}counterfactual_welfare_1gb10gb.pdf", bbox_inches = "tight", transparent=True)
+    plt.savefig(f"{paths.graphs_path}figure9.pdf", bbox_inches = "tight", transparent=True)
     
 if print_:
     plt.show()
@@ -1020,28 +880,22 @@ y_fontsize = "large"
 title_fontsize = "x-large"
 
 # consumer surplus
-axs[0,0].plot(num_firms_array_extend, cs_allfixed(default_task_id), color="black", lw=lw, alpha=alpha)
-#axs[0,0].plot(num_firms_array_extend, cs_allfixed(default_task_id) + 1.96 * cs_allfixed_se(default_task_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-#axs[0,0].plot(num_firms_array_extend, cs_allfixed(default_task_id) - 1.96 * cs_allfixed_se(default_task_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-axs[0,0].axvline(x=num_firms_array_extend[np.nanargmax(cs_allfixed(default_task_id))], color="black", linestyle="--", alpha=0.25)
+axs[0,0].plot(num_firms_array_extend, cs_allfixed(default_task_id), color="black", lw=lw)
+axs[0,0].axvline(x=num_firms_array_extend[np.nanargmax(cs_allfixed(default_task_id))], color="black", linestyle="--")
 axs[0,0].set_xlabel("number of firms", fontsize=x_fontsize)
 axs[0,0].set_ylabel("\u20ac / person", fontsize=y_fontsize)
 axs[0,0].set_title("consumer surplus", fontsize=title_fontsize)
 
 # producer surplus
-axs[0,1].plot(num_firms_array_extend, ps_allfixed(default_task_id), color="black", lw=lw, alpha=alpha)
-#axs[0,1].plot(num_firms_array_extend, ps_allfixed(default_task_id) + 1.96 * ps_allfixed_se(default_task_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-#axs[0,1].plot(num_firms_array_extend, ps_allfixed(default_task_id) - 1.96 * ps_allfixed_se(default_task_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-axs[0,1].axvline(x=num_firms_array_extend[np.nanargmax(ps_allfixed(default_task_id))], color="black", linestyle="--", alpha=0.25)
+axs[0,1].plot(num_firms_array_extend, ps_allfixed(default_task_id), color="black", lw=lw)
+axs[0,1].axvline(x=num_firms_array_extend[np.nanargmax(ps_allfixed(default_task_id))], color="black", linestyle="--")
 axs[0,1].set_xlabel("number of firms", fontsize=x_fontsize)
 axs[0,1].set_ylabel("\u20ac / person", fontsize=y_fontsize)
 axs[0,1].set_title("producer surplus", fontsize=title_fontsize)
 
 # total surplus
-axs[0,2].plot(num_firms_array_extend, ts_allfixed(default_task_id), color="black", lw=lw, alpha=alpha)
-#axs[0,2].plot(num_firms_array_extend, ts_allfixed(default_task_id) + 1.96 * ts_allfixed_se(default_task_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-#axs[0,2].plot(num_firms_array_extend, ts_allfixed(default_task_id) - 1.96 * ts_allfixed_se(default_task_id), color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-axs[0,2].axvline(x=num_firms_array_extend[np.nanargmax(ts_allfixed(default_task_id))], color="black", linestyle="--", alpha=0.25)
+axs[0,2].plot(num_firms_array_extend, ts_allfixed(default_task_id), color="black", lw=lw)
+axs[0,2].axvline(x=num_firms_array_extend[np.nanargmax(ts_allfixed(default_task_id))], color="black", linestyle="--")
 axs[0,2].set_xlabel("number of firms", fontsize=x_fontsize)
 axs[0,2].set_ylabel("\u20ac / person", fontsize=y_fontsize)
 axs[0,2].set_title("total surplus", fontsize=title_fontsize)
@@ -1075,26 +929,20 @@ if print_:
 
 fig, axs = plt.subplots(1, 3, figsize=(9.0,3.25), sharex=True, squeeze=False)
 
-axs[0,0].plot(num_firms_array_extend, cs_by_type(default_task_id)[:,0], color="black", lw=lw, alpha=alpha)
-#axs[i,0].plot(num_firms_array_extend, cs_by_type(default_task_id)[:,0] + 1.96 * cs_by_type_se(default_task_id)[:,0], color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-#axs[i,0].plot(num_firms_array_extend, cs_by_type(default_task_id)[:,0] - 1.96 * cs_by_type_se(default_task_id)[:,0], color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-axs[0,0].axvline(x=num_firms_array_extend[np.argmax(cs_by_type(default_task_id)[:,0])], color="black", linestyle="--", alpha=0.25)
+axs[0,0].plot(num_firms_array_extend, cs_by_type(default_task_id)[:,0], color="black", lw=lw)
+axs[0,0].axvline(x=num_firms_array_extend[np.argmax(cs_by_type(default_task_id)[:,0])], color="black", linestyle="--")
 axs[0,0].set_xlabel("number of firms", fontsize=x_fontsize)
 axs[0,0].set_ylabel("consumer surplus (\u20ac / person)", fontsize=y_fontsize)
 axs[0,0].set_title("10th percentile", fontsize=title_fontsize)
 
-axs[0,1].plot(num_firms_array_extend, cs_by_type(default_task_id)[:,4], color="black", lw=lw, alpha=alpha)
-#axs[i,1].plot(num_firms_array_extend, cs_by_type(default_task_id)[:,4] + 1.96 * cs_by_type_se(default_task_id)[:,4], color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-#axs[i,1].plot(num_firms_array_extend, cs_by_type(default_task_id)[:,4] - 1.96 * cs_by_type_se(default_task_id)[:,4], color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-axs[0,1].axvline(x=num_firms_array_extend[np.argmax(cs_by_type(default_task_id)[:,4])], color="black", linestyle="--", alpha=0.25)
+axs[0,1].plot(num_firms_array_extend, cs_by_type(default_task_id)[:,4], color="black", lw=lw)
+axs[0,1].axvline(x=num_firms_array_extend[np.argmax(cs_by_type(default_task_id)[:,4])], color="black", linestyle="--")
 axs[0,1].set_xlabel("number of firms", fontsize=x_fontsize)
 axs[0,1].set_ylabel("consumer surplus (\u20ac / person)", fontsize=y_fontsize)
 axs[0,1].set_title("50th percentile", fontsize=title_fontsize)
 
-axs[0,2].plot(num_firms_array_extend, cs_by_type(default_task_id)[:,8], color="black", lw=lw, alpha=alpha)
-#axs[i,2].plot(num_firms_array_extend, cs_by_type(default_task_id)[:,8] + 1.96 * cs_by_type_se(default_task_id)[:,8], color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-#axs[i,2].plot(num_firms_array_extend, cs_by_type(default_task_id)[:,8] - 1.96 * cs_by_type_se(default_task_id)[:,8], color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-axs[0,2].axvline(x=num_firms_array_extend[np.argmax(cs_by_type(default_task_id)[:,8])], color="black", linestyle="--", alpha=0.25)
+axs[0,2].plot(num_firms_array_extend, cs_by_type(default_task_id)[:,8], color="black", lw=lw)
+axs[0,2].axvline(x=num_firms_array_extend[np.argmax(cs_by_type(default_task_id)[:,8])], color="black", linestyle="--")
 axs[0,2].set_xlabel("number of firms", fontsize=x_fontsize)
 axs[0,2].set_ylabel("consumer surplus (\u20ac / person)", fontsize=y_fontsize)
 axs[0,2].set_title("90th percentile", fontsize=title_fontsize)
@@ -1112,428 +960,8 @@ plt.tight_layout()
 
 if save_:
     plt.savefig(f"{paths.graphs_path}counterfactual_cs_by_income_1gb10gb.pdf", bbox_inches = "tight", transparent=True)
+    plt.savefig(f"{paths.graphs_path}figure10.pdf", bbox_inches = "tight", transparent=True)
     
-if print_:
-    plt.show()
-    
-# %%
-# Consumer surplus by type for number of firms - all fixed
-
-fig, axs = plt.subplots(1, 3, figsize=(9.0,3.25), sharex=True, squeeze=False)
-
-axs[0,0].plot(num_firms_array_extend, cs_by_type_allfixed(default_task_id)[:,0], color="black", lw=lw, alpha=alpha)
-#axs[i,0].plot(num_firms_array_extend, cs_by_type_allfixed(default_task_id)[:,0] + 1.96 * cs_by_type_allfixed_se(default_task_id)[:,0], color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-#axs[i,0].plot(num_firms_array_extend, cs_by_type_allfixed(default_task_id)[:,0] - 1.96 * cs_by_type_allfixed_se(default_task_id)[:,0], color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-axs[0,0].axvline(x=num_firms_array_extend[np.argmax(cs_by_type_allfixed(default_task_id)[:,0])], color="black", linestyle="--", alpha=0.25)
-axs[0,0].set_xlabel("number of firms", fontsize=x_fontsize)
-axs[0,0].set_ylabel("consumer surplus (\u20ac / person)", fontsize=y_fontsize)
-axs[0,0].set_title("10th percentile", fontsize=title_fontsize)
-
-axs[0,1].plot(num_firms_array_extend, cs_by_type_allfixed(default_task_id)[:,4], color="black", lw=lw, alpha=alpha)
-#axs[i,1].plot(num_firms_array_extend, cs_by_type_allfixed(default_task_id)[:,4] + 1.96 * cs_by_type_allfixed_se(default_task_id)[:,4], color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-#axs[i,1].plot(num_firms_array_extend, cs_by_type_allfixed(default_task_id)[:,4] - 1.96 * cs_by_type_allfixed_se(default_task_id)[:,4], color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-axs[0,1].axvline(x=num_firms_array_extend[np.argmax(cs_by_type_allfixed(default_task_id)[:,4])], color="black", linestyle="--", alpha=0.25)
-axs[0,1].set_xlabel("number of firms", fontsize=x_fontsize)
-axs[0,1].set_ylabel("consumer surplus (\u20ac / person)", fontsize=y_fontsize)
-axs[0,1].set_title("50th percentile", fontsize=title_fontsize)
-
-axs[0,2].plot(num_firms_array_extend, cs_by_type_allfixed(default_task_id)[:,8], color="black", lw=lw, alpha=alpha)
-#axs[i,2].plot(num_firms_array_extend, cs_by_type_allfixed(default_task_id)[:,8] + 1.96 * cs_by_type_allfixed_se(default_task_id)[:,8], color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-#axs[i,2].plot(num_firms_array_extend, cs_by_type_allfixed(default_task_id)[:,8] - 1.96 * cs_by_type_allfixed_se(default_task_id)[:,8], color="black", lw=0.7 * lw, alpha=0.5 * alpha, ls="--")
-axs[0,2].axvline(x=num_firms_array_extend[np.argmax(cs_by_type_allfixed(default_task_id)[:,8])], color="black", linestyle="--", alpha=0.25)
-axs[0,2].set_xlabel("number of firms", fontsize=x_fontsize)
-axs[0,2].set_ylabel("consumer surplus (\u20ac / person)", fontsize=y_fontsize)
-axs[0,2].set_title("90th percentile", fontsize=title_fontsize)
-    
-# Set axis limits
-for i, income_idx in enumerate([0,4,8]):
-    margin = 0.1
-    min_cs = np.min(cs_by_type_allfixed(default_task_id)[1:,income_idx])
-    max_cs = np.max(cs_by_type_allfixed(default_task_id)[1:,income_idx])
-    diff = max_cs - min_cs
-    axs[0,i].set_ylim((min_cs - margin * diff, max_cs + margin * diff)) # don't include the monopoly case
-    axs[0,i].set_xticks(num_firms_array_extend)
-        
-plt.tight_layout()
-
-if save_:
-    plt.savefig(f"{paths.graphs_path}counterfactual_cs_by_income_1gb10gb_allfixed.pdf", bbox_inches = "tight", transparent=True)
-    
-if print_:
-    plt.show()
-    
-# %%
-# Endogenous Variables in "Short-run" Simulations
-
-to_tex = "\\begin{tabular}{c c c c} \n"
-to_tex += " & $\\Delta$ 1$\\,$000 MB plan & $\\Delta$ 10$\\,$000 MB plan & $\\Delta$ download  \\\\ \n" 
-to_tex += " & prices (in \euro{}) & prices (in \euro{}) & speeds (in Mbps) \\\\ \n"
-to_tex += "\\hline \n"
-to_tex += "short-run"
-to_tex += f" & ${round_var(p_stars_shortrun(default_task_id)[0,0], num_digits_round)}$ ${round_var(p_stars_shortrun_se(default_task_id)[0,0], num_digits_round, stderrs=True)}$"
-to_tex += f" & ${round_var(p_stars_shortrun(default_task_id)[0,1], num_digits_round)}$ ${round_var(p_stars_shortrun_se(default_task_id)[0,1], num_digits_round, stderrs=True)}$"
-to_tex += f" & ${round_var(q_stars_shortrun(default_task_id)[0], num_digits_round)}$ ${round_var(q_stars_shortrun_se(default_task_id)[0], num_digits_round, stderrs=True)}$"
-to_tex += " \\\\ \n"
-to_tex += "long-run"
-to_tex += f" & ${round_var(p_stars_shortrun(default_task_id)[1,0], num_digits_round)}$ ${round_var(p_stars_shortrun_se(default_task_id)[1,0], num_digits_round, stderrs=True)}$"
-to_tex += f" & ${round_var(p_stars_shortrun(default_task_id)[1,1], num_digits_round)}$ ${round_var(p_stars_shortrun_se(default_task_id)[1,1], num_digits_round, stderrs=True)}$"
-to_tex += f" & ${round_var(q_stars_shortrun(default_task_id)[1], num_digits_round)}$ ${round_var(q_stars_shortrun_se(default_task_id)[1], num_digits_round, stderrs=True)}$"
-to_tex += " \\\\ \n"
-to_tex += "\\hline \n" 
-to_tex += "difference"
-to_tex += f" & ${round_var(p_stars_shortrun(default_task_id)[2,0], num_digits_round)}$ ${round_var(p_stars_shortrun_se(default_task_id)[2,0], num_digits_round, stderrs=True)}$"
-to_tex += f" & ${round_var(p_stars_shortrun(default_task_id)[2,1], num_digits_round)}$ ${round_var(p_stars_shortrun_se(default_task_id)[2,1], num_digits_round, stderrs=True)}$"
-to_tex += f" & ${round_var(q_stars_shortrun(default_task_id)[2], num_digits_round)}$ ${round_var(q_stars_shortrun_se(default_task_id)[2], num_digits_round, stderrs=True)}$"
-to_tex += " \\\\ \n"
-to_tex += "\\hline \n" 
-to_tex += "\\end{tabular} \n"
-if save_:
-    create_file(f"{paths.tables_path}counterfactual_shortrun_variables_preferredspecification.tex", to_tex)
-if print_:
-    print(to_tex)
-    
-# %%
-# Welfare in "Short-run" simulations
-
-to_tex = "\\begin{tabular}{c c c c} \n"
-to_tex += " & $\\Delta$ CS & $\\Delta$ PS & $\\Delta$ TS \\\\ \n"
-to_tex += "\\hline \n"
-to_tex += "short-run"
-to_tex += f" & ${round_var(cs_shortrun(default_task_id)[0], num_digits_round)}$ ${round_var(cs_shortrun_se(default_task_id)[0], num_digits_round, stderrs=True)}$"
-to_tex += f" & ${round_var(ps_shortrun(default_task_id)[0], num_digits_round)}$ ${round_var(ps_shortrun_se(default_task_id)[0], num_digits_round, stderrs=True)}$"
-to_tex += f" & ${round_var(ts_shortrun(default_task_id)[0], num_digits_round)}$ ${round_var(ts_shortrun_se(default_task_id)[0], num_digits_round, stderrs=True)}$"
-to_tex += " \\\\ \n"
-to_tex += "long-run"
-to_tex += f" & ${round_var(cs_shortrun(default_task_id)[1], num_digits_round)}$ ${round_var(cs_shortrun_se(default_task_id)[1], num_digits_round, stderrs=True)}$"
-to_tex += f" & ${round_var(ps_shortrun(default_task_id)[1], num_digits_round)}$ ${round_var(ps_shortrun_se(default_task_id)[1], num_digits_round, stderrs=True)}$"
-to_tex += f" & ${round_var(ts_shortrun(default_task_id)[1], num_digits_round)}$ ${round_var(ts_shortrun_se(default_task_id)[1], num_digits_round, stderrs=True)}$"
-to_tex += " \\\\ \n"
-to_tex += "\\hline \n" 
-to_tex += "difference"
-to_tex += f" & ${round_var(cs_shortrun(default_task_id)[2], num_digits_round)}$ ${round_var(cs_shortrun_se(default_task_id)[2], num_digits_round, stderrs=True)}$"
-to_tex += f" & ${round_var(ps_shortrun(default_task_id)[2], num_digits_round)}$ ${round_var(ps_shortrun_se(default_task_id)[2], num_digits_round, stderrs=True)}$"
-to_tex += f" & ${round_var(ts_shortrun(default_task_id)[2], num_digits_round)}$ ${round_var(ts_shortrun_se(default_task_id)[2], num_digits_round, stderrs=True)}$"
-to_tex += " \\\\ \n"
-to_tex += "\\hline \n" 
-to_tex += "\\end{tabular} \n"
-if save_:
-    create_file(f"{paths.tables_path}counterfactual_shortrun_welfare_preferredspecification.tex", to_tex)
-if print_:
-    print(to_tex)
-    
-# %%
-# CS by Income Level in "Short-run" Simulations
-
-to_tex = "\\begin{tabular}{c c c c c c} \n"
-to_tex += " & $\\Delta$ CS & $\\Delta$ CS & $\\Delta$ CS & $\\Delta$ CS & $\\Delta$ CS \\\\ \n" 
-to_tex += " & 10 \\%ile & 30 \\%ile & 50 \\%ile & 70 \\%ile & 90 \\%ile \\\\ \n"
-to_tex += "\\hline \n"
-to_tex += "short-run & "
-for i in range(5):
-    to_tex += f"${round_var(cs_by_type_shortrun(default_task_id)[0,2*i], num_digits_round)}$ ${round_var(cs_by_type_shortrun_se(default_task_id)[1,2*i], num_digits_round, stderrs=True)}$"
-    if i < 4:
-        to_tex += " & "
-to_tex += " \\\\ \n"
-to_tex += "long-run & "
-for i in range(5):
-    to_tex += f"${round_var(cs_by_type_shortrun(default_task_id)[1,2*i], num_digits_round)}$ ${round_var(cs_by_type_shortrun_se(default_task_id)[0,2*i], num_digits_round, stderrs=True)}$"
-    if i < 4:
-        to_tex += " & "
-to_tex += " \\\\ \n"
-to_tex += "\\hline \n" 
-to_tex += "difference & "
-for i in range(5):
-    to_tex += f"${round_var(cs_by_type_shortrun(default_task_id)[2,2*i], num_digits_round)}$ ${round_var(cs_by_type_shortrun_se(default_task_id)[0,2*i], num_digits_round, stderrs=True)}$"
-    if i < 4:
-        to_tex += " & "
-to_tex += " \\\\ \n"
-to_tex += "\\hline \n" 
-to_tex += "\\end{tabular} \n"
-if save_:
-    create_file(f"{paths.tables_path}counterfactual_shortrun_cs_by_income_preferredspecification.tex", to_tex)
-if print_:
-    print(to_tex)
-    
-# %%
-# "Add Free" endogenous variables (all fixed)
-
-fig, axs = plt.subplots(2, 3, figsize=(12.0,6.5), squeeze=False)
-
-x_fontsize = "large"
-y_fontsize = "large"
-title_fontsize = "x-large"
-
-x_pos = [i for i in range(2)]
-x_ticklabels = ["$3$ firms, $\\frac{4}{3}$ b", "$4$ firms, b"]
-
-# dlim = 1,000 prices
-axs[0,0].bar(x_pos, p_stars_free_allfixed(default_task_id)[:,0], yerr=1.96 * p_stars_free_allfixed_se(default_task_id)[:,0], capsize=7.0, color="black", alpha=0.8 * alpha)
-axs[0,0].set_xticks(x_pos)
-axs[0,0].set_xticklabels(x_ticklabels, rotation=60, ha="right", fontsize=x_fontsize)
-axs[0,0].set_ylabel("$\\Delta p_{j}^{*}$ (in \u20ac)", fontsize=y_fontsize)
-axs[0,0].set_title("1$\,$000 MB plan prices", fontsize=title_fontsize)
-
-# dlim = 10,000 prices
-axs[0,1].bar(x_pos, p_stars_free_allfixed(default_task_id)[:,1], yerr=1.96 * p_stars_free_allfixed_se(default_task_id)[:,1], capsize=7.0, color="black", alpha=0.8 * alpha)
-axs[0,1].set_xticks(x_pos)
-axs[0,1].set_xticklabels(x_ticklabels, rotation=60, ha="right", fontsize=x_fontsize)
-axs[0,1].set_ylabel("$\\Delta p_{j}^{*}$ (in \u20ac)", fontsize=y_fontsize)
-axs[0,1].set_title("10$\,$000 MB plan prices", fontsize=title_fontsize)
-
-axs[0,2].bar(x_pos, num_stations_per_firm_stars_free_allfixed(default_task_id) * 1000.0, yerr=1.96 * num_stations_per_firm_stars_free_allfixed_se(default_task_id) * 1000.0, capsize=7.0, color="black", alpha=0.8 * alpha)
-axs[0,2].set_xticks(x_pos)
-axs[0,2].set_xticklabels(x_ticklabels, rotation=60, ha="right", fontsize=x_fontsize)
-axs[0,2].set_ylabel("$\\Delta$ number of stations\n(per 1000 people)", fontsize=y_fontsize)
-axs[0,2].set_title("number of stations / firm", fontsize=title_fontsize)
-
-# total number of stations
-axs[1,0].bar(x_pos, num_stations_stars_free_allfixed(default_task_id) * 1000.0, yerr=1.96 * num_stations_stars_free_allfixed_se(default_task_id) * 1000.0, capsize=7.0, color="black", alpha=0.8 * alpha)
-axs[1,0].set_xticks(x_pos)
-axs[1,0].set_xticklabels(x_ticklabels, rotation=60, ha="right", fontsize=x_fontsize)
-axs[1,0].set_ylabel("$\\Delta$ number of stations\n(per 1000 people)", fontsize=y_fontsize)
-axs[1,0].set_title("total number of stations", fontsize=title_fontsize)
-
-# average path loss
-axs[1,1].bar(x_pos, ccs_per_bw_free_allfixed(default_task_id), yerr=1.96 * ccs_per_bw_free_allfixed_se(default_task_id), capsize=7.0, color="black", alpha=0.8 * alpha)
-axs[1,1].set_xticks(x_pos)
-axs[1,1].set_xticklabels(x_ticklabels, rotation=60, ha="right", fontsize=x_fontsize)
-axs[1,1].set_ylabel("$\\Delta$ Mbps / MHz", fontsize=y_fontsize)
-axs[1,1].set_title("channel capacity / unit bw", fontsize=title_fontsize)
-
-# download speeds
-axs[1,2].bar(x_pos, q_stars_free_allfixed(default_task_id), yerr=1.96 * q_stars_free_allfixed_se(default_task_id), capsize=7.0, color="black", alpha=0.8 * alpha)
-axs[1,2].set_xticks(x_pos)
-axs[1,2].set_xticklabels(x_ticklabels, rotation=60, ha="right", fontsize=x_fontsize)
-axs[1,2].set_ylabel("$\\Delta Q_{f}^{*}$ (in Mbps)", fontsize=y_fontsize)
-axs[1,2].set_title("download speeds", fontsize=title_fontsize)
-
-# Set axis limits
-min_y_p = np.min(p_stars_free_allfixed(default_task_id)) - 0.75
-max_y_p = np.max(p_stars_free_allfixed(default_task_id)) + 0.7
-for i in range(2): # first two columns
-    axs[0,i].set_ylim((min_y_p, max_y_p))
-
-plt.tight_layout()
-
-if save_:
-    plt.savefig(f"{paths.graphs_path}counterfactual_free_variables_allfixed_1gb10gb.pdf", bbox_inches = "tight", transparent=True)
-
-if print_:
-    plt.show()
-    
-# %%
-# "Add Free" endogenous variables (all bw)
-
-fig, axs = plt.subplots(2, 3, figsize=(12.0,6.5), squeeze=False)
-
-x_pos = [i for i in range(2)]
-x_ticklabels = ["$3$ firms, $\\frac{4}{3}$ b", "$4$ firms, b"]
-
-# dlim = 1,000 prices
-axs[0,0].bar(x_pos, p_stars_free_allbw(default_task_id)[:,0], yerr=1.96 * p_stars_free_allbw_se(default_task_id)[:,0], capsize=7.0, color="black", alpha=0.8 * alpha)
-axs[0,0].set_xticks(x_pos)
-axs[0,0].set_xticklabels(x_ticklabels, rotation=60, ha="right", fontsize=x_fontsize)
-axs[0,0].set_ylabel("$\\Delta p_{j}^{*}$ (in \u20ac)", fontsize=y_fontsize)
-axs[0,0].set_title("1$\,$000 MB plan prices", fontsize=title_fontsize)
-
-# dlim = 10,000 prices
-axs[0,1].bar(x_pos, p_stars_free_allbw(default_task_id)[:,1], yerr=1.96 * p_stars_free_allbw_se(default_task_id)[:,1], capsize=7.0, color="black", alpha=0.8 * alpha)
-axs[0,1].set_xticks(x_pos)
-axs[0,1].set_xticklabels(x_ticklabels, rotation=60, ha="right", fontsize=x_fontsize)
-axs[0,1].set_ylabel("$\\Delta p_{j}^{*}$ (in \u20ac)", fontsize=y_fontsize)
-axs[0,1].set_title("10$\,$000 MB plan prices", fontsize=title_fontsize)
-
-axs[0,2].bar(x_pos, num_stations_per_firm_stars_free_allbw(default_task_id) * 1000.0, yerr=1.96 * num_stations_per_firm_stars_free_allbw_se(default_task_id) * 1000.0, capsize=7.0, color="black", alpha=0.8 * alpha)
-axs[0,2].set_xticks(x_pos)
-axs[0,2].set_xticklabels(x_ticklabels, rotation=60, ha="right", fontsize=x_fontsize)
-axs[0,2].set_ylabel("$\\Delta$ number of stations\n(per 1000 people)", fontsize=y_fontsize)
-axs[0,2].set_title("number of stations / firm", fontsize=title_fontsize)
-
-# total number of stations
-axs[1,0].bar(x_pos, num_stations_stars_free_allbw(default_task_id) * 1000.0, yerr=1.96 * num_stations_stars_free_allbw_se(default_task_id) * 1000.0, capsize=7.0, color="black", alpha=0.8 * alpha)
-axs[1,0].set_xticks(x_pos)
-axs[1,0].set_xticklabels(x_ticklabels, rotation=60, ha="right", fontsize=x_fontsize)
-axs[1,0].set_ylabel("$\\Delta$ number of stations\n(per 1000 people)", fontsize=y_fontsize)
-axs[1,0].set_title("total number of stations", fontsize=title_fontsize)
-
-# average path loss
-axs[1,1].bar(x_pos, ccs_per_bw_free_allbw(default_task_id), yerr=1.96 * ccs_per_bw_free_allbw_se(default_task_id), capsize=7.0, color="black", alpha=0.8 * alpha)
-axs[1,1].set_xticks(x_pos)
-axs[1,1].set_xticklabels(x_ticklabels, rotation=60, ha="right", fontsize=x_fontsize)
-axs[1,1].set_ylabel("$\\Delta$ Mbps / MHz", fontsize=y_fontsize)
-axs[1,1].set_title("channel capacity / unit bw", fontsize=title_fontsize)
-
-# download speeds
-axs[1,2].bar(x_pos, q_stars_free_allbw(default_task_id), yerr=1.96 * q_stars_free_allbw_se(default_task_id), capsize=7.0, color="black", alpha=0.8 * alpha)
-axs[1,2].set_xticks(x_pos)
-axs[1,2].set_xticklabels(x_ticklabels, rotation=60, ha="right", fontsize=x_fontsize)
-axs[1,2].set_ylabel("$\\Delta Q_{f}^{*}$ (in Mbps)", fontsize=y_fontsize)
-axs[1,2].set_title("download speeds", fontsize=title_fontsize)
-
-# Set axis limits
-min_y_p = np.min(p_stars_free_allbw(default_task_id)) - 0.65
-max_y_p = np.max(p_stars_free_allbw(default_task_id)) + 0.6
-for i in range(2): # first two columns
-    axs[0,i].set_ylim((min_y_p, max_y_p))
-
-plt.tight_layout()
-
-if save_:
-    plt.savefig(f"{paths.graphs_path}counterfactual_free_variables_allbw_1gb10gb.pdf", bbox_inches = "tight", transparent=True)
-
-if print_:
-    plt.show()
-    
-# %%
-# Welfare for "Add Free" (all fixed)
-
-fig, axs = plt.subplots(1, 3, figsize=(9.0,3.25), squeeze=False)
-
-x_fontsize = "large"
-y_fontsize = "large"
-title_fontsize = "x-large"
-
-x_pos = [i for i in range(2)]
-x_ticklabels = ["$3$ firms, $\\frac{4}{3}$ b", "$4$ firms, b"]
-
-margin = 0.1
-
-# consumer surplus
-axs[0,0].bar(x_pos, cs_free_allfixed(default_task_id), yerr=1.96*cs_free_allfixed_se(default_task_id), capsize=7.0, color="black", alpha=0.8 * alpha)
-axs[0,0].set_xticks(x_pos)
-axs[0,0].set_xticklabels(x_ticklabels, rotation=60, ha="right", fontsize=x_fontsize)
-axs[0,0].set_ylabel("$\\Delta$ CS (in \u20ac / person)", fontsize=y_fontsize)
-max_cs = np.max(cs_free_allfixed(default_task_id) + 1.96 * cs_free_allfixed_se(default_task_id))
-min_cs = np.min(cs_free_allfixed(default_task_id) - 1.96 * cs_free_allfixed_se(default_task_id))
-diff = np.maximum(max_cs, 0.0) - np.minimum(min_cs, 0.0)
-axs[0,0].set_ylim((np.minimum(min_cs - margin * diff, 0.0), np.maximum(max_cs + margin * diff, 0.0)))
-axs[0,0].set_title("consumer surplus", fontsize=title_fontsize)
-
-# producer surplus
-axs[0,1].bar(x_pos, ps_free_allfixed(default_task_id), yerr=1.96*ps_free_allfixed_se(default_task_id), capsize=7.0, color="black", alpha=0.8 * alpha)
-axs[0,1].set_xticks(x_pos)
-axs[0,1].set_xticklabels(x_ticklabels, rotation=60, ha="right", fontsize=x_fontsize)
-axs[0,1].set_ylabel("$\\Delta$ PS (in \u20ac / person)", fontsize=y_fontsize)
-max_ps = np.max(ps_free_allfixed(default_task_id) + 1.96 * ps_free_allfixed_se(default_task_id))
-min_ps = np.min(ps_free_allfixed(default_task_id) - 1.96 * ps_free_allfixed_se(default_task_id))
-diff = np.maximum(max_ps, 0.0) - np.minimum(min_ps, 0.0)
-axs[0,1].set_ylim((np.minimum(min_ps - margin * diff, 0.0), np.maximum(max_ps + margin * diff, 0.0)))
-axs[0,1].set_title("producer surplus", fontsize=title_fontsize)
-
-# total surplus
-axs[0,2].bar(x_pos, ts_free_allfixed(default_task_id), yerr=1.96*ts_free_allfixed_se(default_task_id), capsize=7.0, color="black", alpha=0.8 * alpha)
-axs[0,2].set_xticks(x_pos)
-axs[0,2].set_xticklabels(x_ticklabels, rotation=60, ha="right", fontsize=x_fontsize)
-axs[0,2].set_ylabel("$\\Delta$ TS (in \u20ac / person)", fontsize=y_fontsize)
-max_ts = np.max(ts_free_allfixed(default_task_id) + 1.96 * ts_free_allfixed_se(default_task_id))
-min_ts = np.min(ts_free_allfixed(default_task_id) - 1.96 * ts_free_allfixed_se(default_task_id))
-diff = np.maximum(max_ts, 0.0) - np.minimum(min_ts, 0.0)
-axs[0,2].set_ylim((np.minimum(min_ts - margin * diff, 0.0), np.maximum(max_ts + margin * diff, 0.0)))
-axs[0,2].set_title("total surplus", fontsize=title_fontsize)
-        
-plt.tight_layout()
-
-if save_:
-    plt.savefig(f"{paths.graphs_path}counterfactual_free_welfare_allfixed_1gb10gb.pdf", bbox_inches = "tight", transparent=True)
-
-if print_:
-    plt.show()
-    
-# %%
-# Welfare for "Add Free" (all bw)
-
-fig, axs = plt.subplots(1, 3, figsize=(9.0,3.25), squeeze=False)
-
-x_pos = [i for i in range(2)]
-x_ticklabels = ["$3$ firms, $\\frac{4}{3}$ b", "$4$ firms, b"]
-
-margin = 0.1
-
-# consumer surplus
-axs[0,0].bar(x_pos, cs_free_allbw(default_task_id), yerr=1.96*cs_free_allbw_se(default_task_id), capsize=7.0, color="black", alpha=0.8 * alpha)
-axs[0,0].set_xticks(x_pos)
-axs[0,0].set_xticklabels(x_ticklabels, rotation=60, ha="right", fontsize=x_fontsize)
-axs[0,0].set_ylabel("$\\Delta$ CS (in \u20ac / person)", fontsize=y_fontsize)
-max_cs = np.max(cs_free_allbw(default_task_id) + 1.96 * cs_free_allbw_se(default_task_id))
-min_cs = np.min(cs_free_allbw(default_task_id) - 1.96 * cs_free_allbw_se(default_task_id))
-diff = np.maximum(max_cs, 0.0) - np.minimum(min_cs, 0.0)
-axs[0,0].set_ylim((np.minimum(min_cs - margin * diff, 0.0), np.maximum(max_cs + margin * diff, 0.0)))
-axs[0,0].set_title("consumer surplus", fontsize=title_fontsize)
-
-# producer surplus
-axs[0,1].bar(x_pos, ps_free_allbw(default_task_id), yerr=1.96*ps_free_allbw_se(default_task_id), capsize=7.0, color="black", alpha=0.8 * alpha)
-axs[0,1].set_xticks(x_pos)
-axs[0,1].set_xticklabels(x_ticklabels, rotation=60, ha="right", fontsize=x_fontsize)
-axs[0,1].set_ylabel("$\\Delta$ PS (in \u20ac / person)", fontsize=y_fontsize)
-max_ps = np.max(ps_free_allbw(default_task_id) + 1.96 * ps_free_allbw_se(default_task_id))
-min_ps = np.min(ps_free_allbw(default_task_id) - 1.96 * ps_free_allbw_se(default_task_id))
-diff = np.maximum(max_ps, 0.0) - np.minimum(min_ps, 0.0)
-axs[0,1].set_ylim((np.minimum(min_ps - margin * diff, 0.0), np.maximum(max_ps + margin * diff, 0.0)))
-axs[0,1].set_title("producer surplus", fontsize=title_fontsize)
-
-# total surplus
-axs[0,2].bar(x_pos, ts_free_allbw(default_task_id), yerr=1.96*ts_free_allbw_se(default_task_id), capsize=7.0, color="black", alpha=0.8 * alpha)
-axs[0,2].set_xticks(x_pos)
-axs[0,2].set_xticklabels(x_ticklabels, rotation=60, ha="right", fontsize=x_fontsize)
-axs[0,2].set_ylabel("$\\Delta$ TS (in \u20ac / person)", fontsize=y_fontsize)
-max_ts = np.max(ts_free_allbw(default_task_id) + 1.96 * ts_free_allbw_se(default_task_id))
-min_ts = np.min(ts_free_allbw(default_task_id) - 1.96 * ts_free_allbw_se(default_task_id))
-diff = np.maximum(max_ts, 0.0) - np.minimum(min_ts, 0.0)
-axs[0,2].set_ylim((np.minimum(min_ts - margin * diff, 0.0), np.maximum(max_ts + margin * diff, 0.0)))
-axs[0,2].set_title("total surplus", fontsize=title_fontsize)
-        
-plt.tight_layout()
-
-if save_:
-    plt.savefig(f"{paths.graphs_path}counterfactual_free_welfare_allbw_1gb10gb.pdf", bbox_inches = "tight", transparent=True)
-
-if print_:
-    plt.show()
-    
-# %%
-# Consumer surplus by type for "Add Free" (all bw)
-
-fig, axs = plt.subplots(1, 3, figsize=(9.0,3.25), squeeze=False)
-
-x_pos = [i for i in range(2)]
-x_ticklabels = ["$3$ firms, $\\frac{4}{3}$ b", "$4$ firms, b"]
-
-axs[0,0].bar(x_pos, cs_by_type_free_allbw(default_task_id)[:,0], yerr=1.96*cs_by_type_free_allbw_se(default_task_id)[:,0], capsize=7.0, color="black", alpha=0.8 * alpha)
-axs[0,0].set_xticks(x_pos)
-axs[0,0].set_xticklabels(x_ticklabels, rotation=60, ha="right", fontsize=x_fontsize)
-axs[0,0].set_ylabel("$\\Delta$ CS (in \u20ac / person)", fontsize=y_fontsize)
-max_cs = np.max(cs_by_type_free_allbw(default_task_id)[:,0] + 1.96 * cs_by_type_free_allbw_se(default_task_id)[:,0])
-min_cs = np.min(cs_by_type_free_allbw(default_task_id)[:,0] - 1.96 * cs_by_type_free_allbw_se(default_task_id)[:,0])
-diff = np.maximum(max_cs, 0.0) - np.minimum(min_cs, 0.0)
-axs[0,0].set_ylim((np.minimum(min_cs - margin * diff, 0.0), np.maximum(max_cs + margin * diff, 0.0)))
-axs[0,0].set_title("10th percentile", fontsize=title_fontsize)
-
-axs[0,1].bar(x_pos, cs_by_type_free_allbw(default_task_id)[:,4], yerr=1.96*cs_by_type_free_allbw_se(default_task_id)[:,4], capsize=7.0, color="black", alpha=0.8 * alpha)
-axs[0,1].set_xticks(x_pos)
-axs[0,1].set_xticklabels(x_ticklabels, rotation=60, ha="right", fontsize=x_fontsize)
-axs[0,1].set_ylabel("$\\Delta$ CS (in \u20ac / person)", fontsize=y_fontsize)
-max_cs = np.max(cs_by_type_free_allbw(default_task_id)[:,4] + 1.96 * cs_by_type_free_allbw_se(default_task_id)[:,4])
-min_cs = np.min(cs_by_type_free_allbw(default_task_id)[:,4] - 1.96 * cs_by_type_free_allbw_se(default_task_id)[:,4])
-diff = np.maximum(max_cs, 0.0) - np.minimum(min_cs, 0.0)
-axs[0,1].set_ylim((np.minimum(min_cs - margin * diff, 0.0), np.maximum(max_cs + margin * diff, 0.0)))
-axs[0,1].set_title("50th percentile", fontsize=title_fontsize)
-
-axs[0,2].bar(x_pos, cs_by_type_free_allbw(default_task_id)[:,8], yerr=1.96*cs_by_type_free_allbw_se(default_task_id)[:,8], capsize=7.0, color="black", alpha=0.8 * alpha)
-axs[0,2].set_xticks(x_pos)
-axs[0,2].set_xticklabels(x_ticklabels, rotation=60, ha="right", fontsize=x_fontsize)
-axs[0,2].set_ylabel("$\\Delta$ CS (in \u20ac / person)", fontsize=y_fontsize)
-max_cs = np.max(cs_by_type_free_allbw(default_task_id)[:,8] + 1.96 * cs_by_type_free_allbw_se(default_task_id)[:,8])
-min_cs = np.min(cs_by_type_free_allbw(default_task_id)[:,8] - 1.96 * cs_by_type_free_allbw_se(default_task_id)[:,8])
-diff = np.maximum(max_cs, 0.0) - np.minimum(min_cs, 0.0)
-axs[0,2].ticklabel_format(style="plain", useOffset=False, axis="y")
-axs[0,2].set_ylim((np.minimum(min_cs - margin * diff, 0.0), np.maximum(max_cs + margin * diff, 0.0)))
-axs[0,2].set_title("90th percentile", fontsize=title_fontsize)
-        
-plt.tight_layout()
-
-if save_:
-    plt.savefig(f"{paths.graphs_path}counterfactual_free_cs_by_income_allbw_1gb10gb.pdf", bbox_inches = "tight", transparent=True)
-
 if print_:
     plt.show()
     
@@ -1589,11 +1017,6 @@ axs[1,0].set_xlabel("number of firms", fontsize=x_fontsize)
 axs[1,0].set_ylabel("number of stations\n(per 1000 people)", fontsize=y_fontsize)
 axs[1,0].set_title("total number of stations / person", fontsize=title_fontsize)
 
-# for i, dens in enumerate(densities_sort[dens_use]):
-#     axs[1,1].plot(num_firms_array, avg_path_losses_dens(default_task_id)[:,densities_argsort[dens_use][i]], color=cm.get_cmap(dens_color_pl)(alphas_dens[i]), lw=lw, label=dens_legend[dens_use][i])
-# axs[1,1].set_xlabel("number of firms", fontsize=x_fontsize)
-# axs[1,1].set_ylabel("dB", fontsize=y_fontsize)
-# axs[1,1].set_title("average path loss", fontsize=title_fontsize)
 for i, dens in enumerate(densities_sort[dens_use]):
     axs[1,1].plot(num_firms_array, ccs_per_bw_dens(default_task_id)[:,densities_argsort[dens_use][i]], color=cm.get_cmap(dens_color_pl)(alphas_dens[i]), lw=lw, label=dens_legend[dens_use][i])
 axs[1,1].set_xlabel("number of firms", fontsize=x_fontsize)
@@ -1615,14 +1038,11 @@ min_y_num_stations_per_firm = 1000.0 * np.nanmin(num_stations_per_firm_stars_den
 max_y_num_stations_per_firm = 1000.0 * np.nanmax(num_stations_per_firm_stars_dens(default_task_id)[:,densities_argsort][:,dens_use])
 min_y_num_stations = 1000.0 * np.nanmin(num_stations_stars_dens(default_task_id)[:,densities_argsort][:,dens_use])
 max_y_num_stations = 1000.0 * np.nanmax(num_stations_stars_dens(default_task_id)[:,densities_argsort][:,dens_use])
-# min_y_pl = np.nanmin(avg_path_losses_dens(default_task_id)[:,densities_argsort][:,dens_use])
-# max_y_pl = np.nanmax(avg_path_losses_dens(default_task_id)[:,densities_argsort][:,dens_use])
 min_y_q = np.nanmin(q_stars_dens(default_task_id)[:,densities_argsort][:,dens_use])
 max_y_q = np.nanmax(q_stars_dens(default_task_id)[:,densities_argsort][:,dens_use])
 diff_p = max_y_p - min_y_p
 diff_num_stations_per_firm = max_y_num_stations_per_firm - min_y_num_stations_per_firm
 diff_num_stations = max_y_num_stations - min_y_num_stations
-# diff_pl = max_y_pl - min_y_pl
 diff_q = max_y_q - min_y_q
 margin = 0.1
 for i in range(2):
@@ -1636,11 +1056,6 @@ for i in range(2):
         axs[i,j].set_xticks(num_firms_array)
         
 # Legends
-# axs[0,0].legend(loc="best")
-# axs[0,1].legend(loc="best")
-# axs[0,2].legend(loc="best")
-# axs[1,0].legend(loc="best")
-# axs[1,1].legend(loc="best")
 axs[1,2].legend(loc="best")
 lines_1 = axs[0,0].get_lines()
 lines_2 = axs[0,2].get_lines()
@@ -1700,22 +1115,14 @@ axs[0,2].set_ylabel("\u20ac / person", fontsize=y_fontsize)
 axs[0,2].set_title("total surplus", fontsize=title_fontsize)
 
 # Set axis limits
-# margin_cs = 1.0 - np.sort(np.concatenate(tuple([normalize_var(cs_dens(default_task_id)[:,densities_argsort[dens_use][i]])])))[-6]
-# margin_ts = 1.0 - np.sort(np.concatenate(tuple([normalize_var(ts_dens(default_task_id)[:,densities_argsort[dens_use][i]])])))[-6]
-# axs[0,0].set_ylim((1.0 - margin_cs, 1.0 + 0.33 * margin_cs))
-# axs[0,2].set_ylim((1.0 - margin_ts, 1.0 + 0.33 * margin_ts))
 axs[0,0].set_ylim((28.5, 29.5))
 axs[0,1].set_ylim((-16.0, -14.0))
 axs[0,2].set_ylim((13.0, 14.5))
 
 for i in range(3):
     axs[0,i].set_xticks(num_firms_array_extend)
-#     axs[0,i].set_yticks([])
     
 # Legends
-# axs[0,0].legend(loc="best")
-# axs[0,1].legend(loc="best")
-# axs[0,2].legend(loc="best")
 lines_1 = axs[0,0].get_lines()
 lines_2 = axs[0,1].get_lines()
 lines_3 = axs[0,2].get_lines()
@@ -1733,184 +1140,6 @@ if print_:
     plt.show()
     
 # %%
-# Endogenous variables - number of firms - by bandwidth
-
-bw_vals_argsort = np.argsort(bw_vals(default_task_id))
-bw_vals_sort = bw_vals(default_task_id)[bw_vals_argsort]
-default_bw_id = np.where(bw_vals_sort == bw_vals(default_task_id)[0])[0][0] # we saved the default density as the first one in the original file
-bw_legend_ = ["0.5 * bw", "bw", "1.5 * bw"] # b/c sorted
-bw_legend = np.array([f"$\\bf{{{bw_legend_[i]}}}$" if i == default_bw_id else f"{bw_legend_[i]}" for i, bw in enumerate(bw_vals_sort)])
-bw_use = np.ones(bw_vals_sort.shape, dtype=bool)
-
-fig, axs = plt.subplots(2, 3, figsize=(12.0, 6.5), squeeze=False)
-
-x_fontsize = "large"
-y_fontsize = "large"
-title_fontsize = "x-large"
-
-bw_color_p = "Greys"
-bw_color_R = "Greys"
-bw_color_Rtot = "Greys"
-bw_color_q = "Greys"
-bw_color_pl = "Greys"
-alphas_bw = np.linspace(0.25, 0.75, bw_vals(default_task_id)[bw_use].shape[0])
-
-# dlim = 1,000 prices
-for i, bw in enumerate(bw_vals_sort[bw_use]):
-    axs[0,0].plot(num_firms_array, p_stars_bw(default_task_id)[:,bw_vals_argsort[bw_use][i],0], color=cm.get_cmap(bw_color_p)(alphas_bw[i]), lw=lw, label=bw_legend[bw_use][i])
-axs[0,0].set_xlabel("number of firms", fontsize=x_fontsize)
-axs[0,0].set_ylabel("$p_{j}^{*}$ (in \u20ac)", fontsize=y_fontsize)
-axs[0,0].set_title("1$\,$000 MB plan prices", fontsize=title_fontsize)
-
-# dlim = 10,000 prices
-for i, bw in enumerate(bw_vals_sort[bw_use]):
-    axs[0,1].plot(num_firms_array, p_stars_bw(default_task_id)[:,bw_vals_argsort[bw_use][i],1], color=cm.get_cmap(bw_color_p)(alphas_bw[i]), lw=lw, label=bw_legend[bw_use][i])
-axs[0,1].set_xlabel("number of firms", fontsize=x_fontsize)
-axs[0,1].set_ylabel("$p_{j}^{*}$ (in \u20ac)", fontsize=y_fontsize)
-axs[0,1].set_title("10$\,$000 MB plan prices", fontsize=title_fontsize)
-
-# radius
-for i, bw in enumerate(bw_vals_sort[bw_use]):
-    axs[0,2].plot(num_firms_array, num_stations_per_firm_stars_bw(default_task_id)[:,bw_vals_argsort[bw_use][i]] * 1000.0, color=cm.get_cmap(bw_color_R)(alphas_bw[i]), lw=lw, label=bw_legend[bw_use][i])
-axs[0,2].set_xlabel("number of firms", fontsize=x_fontsize)
-axs[0,2].set_ylabel("number of stations\n(per 1000 people)", fontsize=y_fontsize)
-axs[0,2].set_title("number of stations / firm", fontsize=title_fontsize)
-
-# total number of stations
-for i, bw in enumerate(bw_vals_sort[bw_use]):
-    axs[1,0].plot(num_firms_array, num_stations_stars_bw(default_task_id)[:,bw_vals_argsort[bw_use][i]] * 1000.0, color=cm.get_cmap(bw_color_Rtot)(alphas_bw[i]), lw=lw, label=bw_legend[bw_use][i])
-axs[1,0].set_xlabel("number of firms", fontsize=x_fontsize)
-axs[1,0].set_ylabel("number of stations\n(per 1000 people)", fontsize=y_fontsize)
-axs[1,0].set_title("total number of stations", fontsize=title_fontsize)
-
-# average path loss
-# for i, bw in enumerate(bw_vals_sort[bw_use]):
-#     axs[1,1].plot(num_firms_array, avg_path_losses_bw(default_task_id)[:,bw_vals_argsort[bw_use][i]], color=cm.get_cmap(bw_color_pl)(alphas_bw[i]), lw=lw, label=bw_legend[bw_use][i])
-# axs[1,1].set_xlabel("number of firms", fontsize=x_fontsize)
-# axs[1,1].set_ylabel("dB", fontsize=y_fontsize)
-# axs[1,1].set_title("average path loss")
-for i, bw in enumerate(bw_vals_sort[bw_use]):
-    axs[1,1].plot(num_firms_array, ccs_per_bw_bw(default_task_id)[:,bw_vals_argsort[bw_use][i]], color=cm.get_cmap(bw_color_pl)(alphas_bw[i]), lw=lw, label=bw_legend[bw_use][i])
-axs[1,1].set_xlabel("number of firms", fontsize=x_fontsize)
-axs[1,1].set_ylabel("Mbps / MHz", fontsize=y_fontsize)
-axs[1,1].set_title("channel capacity / unit bw", fontsize=title_fontsize)
-
-# download speeds
-for i, bw in enumerate(bw_vals_sort[bw_use]):
-    axs[1,2].plot(num_firms_array, q_stars_bw(default_task_id)[:,bw_vals_argsort[bw_use][i]], color=cm.get_cmap(bw_color_q)(alphas_bw[i]), lw=lw, label=bw_legend[bw_use][i])
-axs[1,2].set_xlabel("number of firms", fontsize=x_fontsize)
-axs[1,2].set_ylabel("$Q_{f}^{*}$ (in Mbps)", fontsize=y_fontsize)
-axs[1,2].set_title("download speeds", fontsize=title_fontsize)
-
-# Set axis limits
-min_y_p = np.nanmin(p_stars_bw(default_task_id)[1:,bw_use,:])
-max_y_p = np.nanmax(p_stars_bw(default_task_id)[1:,bw_use,:])
-min_y_num_stations_per_firm = np.nanmin(num_stations_per_firm_stars_bw(default_task_id)[:,bw_use]) * 1000.0
-max_y_num_stations_per_firm = np.nanmax(num_stations_per_firm_stars_bw(default_task_id)[:,bw_use]) * 1000.0
-min_y_num_stations = np.nanmin(num_stations_stars_bw(default_task_id)[:,bw_use]) * 1000.0
-max_y_num_stations = np.nanmax(num_stations_stars_bw(default_task_id)[:,bw_use]) * 1000.0
-# min_y_pl = np.nanmin(avg_path_losses_bw(default_task_id)[:,bw_use]) - 2.
-# max_y_pl = np.nanmax(avg_path_losses_bw(default_task_id)[:,bw_use]) + 2.
-min_y_q = np.nanmin(q_stars_bw(default_task_id)[:,bw_use])
-max_y_q = np.nanmax(q_stars_bw(default_task_id)[:,bw_use])
-diff_p = max_y_p - min_y_p
-diff_num_stations_per_firm = max_y_num_stations_per_firm - min_y_num_stations_per_firm
-diff_num_stations = max_y_num_stations - min_y_num_stations
-# diff_pl = max_y_pl - min_y_pl
-diff_q = max_y_q - min_y_q
-margin = 0.1
-for i in range(2):
-    axs[0,i].set_ylim((min_y_p - margin * diff_p, max_y_p + margin * diff_p))
-axs[0,2].set_ylim((min_y_num_stations_per_firm - margin * diff_num_stations_per_firm, max_y_num_stations_per_firm + margin * diff_num_stations_per_firm))
-axs[1,0].set_ylim((min_y_num_stations - margin * diff_num_stations, max_y_num_stations + margin * diff_num_stations))
-# axs[1,1].set_ylim((min_y_pl - margin * diff_pl, max_y_pl + margin * diff_pl))
-axs[1,2].set_ylim((min_y_q - margin * diff_q, max_y_q + margin * diff_q))
-for i in range(2):
-    for j in range(3):
-        axs[i,j].set_xticks(num_firms_array)
-
-# Legends
-axs[0,0].legend(loc="best")
-axs[0,1].legend(loc="best")
-axs[0,2].legend(loc="best")
-axs[1,0].legend(loc="best")
-axs[1,1].legend(loc="best")
-axs[1,2].legend(loc="best")
-
-plt.tight_layout()
-
-if save_:
-    plt.savefig(f"{paths.graphs_path}counterfactual_bw_1gb10gb.pdf", bbox_inches = "tight", transparent=True)
-
-if print_:
-    plt.show()
-    
-# %%
-# Welfare for number of firms by bandwidth
-
-fig, axs = plt.subplots(1, 3, figsize=(9.0,3.25), sharex=True, squeeze=False)
-
-x_fontsize = "large"
-y_fontsize = "large"
-title_fontsize = "x-large"
-
-bw_use = np.ones(bw_vals_sort.shape, dtype=bool)
-
-bw_color_cs = "Greys"
-bw_color_ps = "Greys"
-bw_color_ts = "Greys"
-alphas_bw = np.linspace(0.25, 0.75, bw_vals(default_task_id)[bw_use].shape[0])
-
-normalize_var = lambda x: (x - np.nanmin(x)) / (np.nanmax(x) - np.nanmin(x))
-
-# consumer surplus
-for i, bw in enumerate(bw_vals_sort[bw_use]):
-    axs[0,0].plot(num_firms_array_extend, normalize_var(cs_bw(default_task_id)[:,bw_vals_argsort[bw_use][i]]), color=cm.get_cmap(bw_color_cs)(alphas_bw[i]), lw=lw, label=bw_legend[bw_use][i])
-    axs[0,0].axvline(x=num_firms_array_extend[np.nanargmax(cs_bw(default_task_id)[:,bw_vals_argsort[bw_use][i]])], color=cm.get_cmap(bw_color_cs)(alphas_bw[i]), linestyle="--")
-axs[0,0].set_xlabel("number of firms", fontsize=x_fontsize)
-axs[0,0].set_ylabel("\u20ac / person", fontsize=y_fontsize)
-axs[0,0].set_title("consumer surplus", fontsize=title_fontsize)
-
-# producer surplus
-for i, bw in enumerate(bw_vals_sort[bw_use]):
-    axs[0,1].plot(num_firms_array_extend, normalize_var(ps_bw(default_task_id)[:,bw_vals_argsort[bw_use][i]]), color=cm.get_cmap(bw_color_ps)(alphas_bw[i]), lw=lw, label=bw_legend[bw_use][i])
-    axs[0,1].axvline(x=num_firms_array_extend[np.nanargmax(ps_bw(default_task_id)[:,bw_vals_argsort[bw_use][i]])], color=cm.get_cmap(bw_color_ps)(alphas_bw[i]), linestyle="--")
-axs[0,1].set_xlabel("number of firms", fontsize=x_fontsize)
-axs[0,1].set_ylabel("\u20ac / person", fontsize=y_fontsize)
-axs[0,1].set_title("producer surplus", fontsize=title_fontsize)
-
-# total surplus
-for i, bw in enumerate(bw_vals_sort[bw_use]):
-    axs[0,2].plot(num_firms_array_extend, normalize_var(ts_bw(default_task_id)[:,bw_vals_argsort[bw_use][i]]), color=cm.get_cmap(bw_color_ts)(alphas_bw[i]), lw=lw, label=bw_legend[bw_use][i])
-    axs[0,2].axvline(x=num_firms_array_extend[np.nanargmax(ts_bw(default_task_id)[:,bw_vals_argsort[bw_use][i]])], color=cm.get_cmap(bw_color_ts)(alphas_bw[i]), linestyle="--")
-axs[0,2].set_xlabel("number of firms", fontsize=x_fontsize)
-axs[0,2].set_ylabel("\u20ac / person", fontsize=y_fontsize)
-axs[0,2].set_title("total surplus", fontsize=title_fontsize)
-
-# Set axis limits
-margin_cs = 1.0 - np.sort(np.concatenate(tuple([normalize_var(cs_bw(default_task_id)[:,bw_vals_argsort[bw_use][i]])])))[-6]
-margin_ts = 1.0 - np.sort(np.concatenate(tuple([normalize_var(ts_bw(default_task_id)[:,bw_vals_argsort[bw_use][i]])])))[-6]
-axs[0,0].set_ylim((1.0 - margin_cs, 1.0 + 0.33 * margin_cs))
-axs[0,2].set_ylim((1.0 - margin_ts, 1.0 + 0.33 * margin_ts))
-
-for i in range(3):
-    axs[0,i].set_xticks(num_firms_array_extend)
-    axs[0,i].set_yticks([])
-
-# Legends
-axs[0,0].legend(loc="best")
-axs[0,1].legend(loc="best")
-axs[0,2].legend(loc="best")
-
-plt.tight_layout()
-
-if save_:
-    plt.savefig(f"{paths.graphs_path}counterfactual_bw_welfare_1gb10gb.pdf", bbox_inches = "tight", transparent=True)
-
-if print_:
-    plt.show()
-    
-# %%
 # Channel capacity as function of radius
 radii = np.linspace(0.01, 4.0, 100)
 hata_losses = infr.hata_loss(radii, infr.freq_rep, infr.height_rep)
@@ -1922,16 +1151,9 @@ axs.plot(radii, infr.A0 - hata_losses, color="black")
 
 axs.axhline(y=infr.JN_noise, color="black", linestyle="dashed")
 
-df_inf = pd.read_csv(f"{paths.data_path}infrastructure_clean.csv", engine="python") # engine helps encoding, error with commune names, but doesn't matter b/c not used
-df_inf = df_inf[df_inf['market'] > 0] # don't include Rest-of-France market
-area = df_inf['area_effective'].values # adjusted commune area
-stations = df_inf[[f"stations{i}" for i in range(1,5)]].values # number of base stations
-radius = np.sqrt(area[:,np.newaxis] / stations / (np.sqrt(3.) * 3. / 2.)) # cell radius assuming homogeneous hexagonal cells, in km
-axs.axvline(x=np.mean(radius[np.isfinite(radius)]), color="red", linestyle="dashed")
+axs.axvline(x=np.load(f"{paths.arrays_path}avg_radius.npy")[0], color="red", linestyle="dashed")
 
-default_elast_id = paths.default_elast_id
-default_nest_id = paths.default_nest_id
-densities = lambda task_id: np.load(f"{paths.arrays_path}cntrfctl_densities_{task_id}.npy")
+densities = lambda task_id: np.load(f"{paths.arrays_path}cntrfctl_densities.npy")
 R_stars_dens = lambda task_id: np.load(f"{paths.arrays_path}R_stars_dens_{task_id}.npy")
 axs.axvline(x=R_stars_dens(default_task_id)[3,np.argsort(densities(default_task_id))[1]], color="red", linestyle="dashed")
 axs.axvline(x=R_stars_dens(default_task_id)[3,np.argsort(densities(default_task_id))[-2]], color="red", linestyle="dashed")
@@ -1947,7 +1169,7 @@ if print_:
     
 channel_capacities = np.zeros(radii.shape)
 gamma = np.load(f"{paths.arrays_path}cntrfctl_gamma.npy")[0]
-bw = np.load(f"{paths.arrays_path}cntrfctl_bw_vals_e{default_elast_id}_n{default_nest_id}.npy")[0] / 4.0
+bw = np.load(f"{paths.arrays_path}cntrfctl_bw_vals.npy")[0] / 4.0
 for i, radius_ in enumerate(radii):
     channel_capacities[i] = infr.rho_C_hex(bw, radius_, gamma)
 
@@ -1958,7 +1180,7 @@ axs.plot(radii, channel_capacities, color="black")
 
 low_R = R_stars_dens(default_task_id)[3,np.argsort(densities(default_task_id))[1]] # France density
 high_R = R_stars_dens(default_task_id)[3,np.argsort(densities(default_task_id))[-2]] # France contraharmonic mean density
-data_R = np.mean(radius[np.isfinite(radius)])
+data_R = np.load(f"{paths.arrays_path}avg_radius.npy")[0]
 axs.axvline(x=data_R, color="grey", linestyle="dashed", alpha=0.65)
 axs.axvline(x=low_R, color="grey", linestyle="dashed", alpha=0.65)
 axs.axvline(x=high_R, color="grey", linestyle="dashed", alpha=0.65)
@@ -1978,25 +1200,15 @@ if print_:
     plt.show()
     
 # Process information about xis
-xis = np.load(f"{paths.arrays_path}xis_e{default_elast_id}_n{default_nest_id}.npy")
-xis_Org_stdev = np.std(xis[:,ds.firms == 1], ddof=1) # standard deviation of Orange xis
-xis_across_firms = np.unique(xis[:,ds.firms != 1]) # non-Orange xis
-thetahat = np.load(f"{paths.arrays_path}thetahat_e{default_elast_id}_n{default_nest_id}.npy")
+xis = np.load(f"{paths.arrays_path}xis_0.npy")[0,:,:]
+xis_Org_stdev = np.std(xis[:,np.load(f"{paths.arrays_path}ds_firms_0.npy") == 1], ddof=1) # standard deviation of Orange xis
+xis_across_firms = np.unique(xis[:,np.load(f"{paths.arrays_path}ds_firms_0.npy") != 1]) # non-Orange xis
+thetahat = np.load(f"{paths.arrays_path}thetahat_0.npy")
 xis_across_firms = np.concatenate((xis_across_firms, np.array([thetahat[coef.O]])))
 xis_across_firms_stdev = np.std(xis_across_firms, ddof=1)
 if save_:
     create_file(f"{paths.stats_path}xis_across_firms_stdev.tex", f"{xis_across_firms_stdev:.3}")
     create_file(f"{paths.stats_path}xis_Org_stdev.tex", f"{xis_Org_stdev:.3}")
-
-# %%
-# Difference in diversion ratios when average particular ways
-
-xis = blp.xi(ds, thetahat, ds.data, None)
-div_ratios = blp.div_ratio(ds, thetahat, ds.data, xis=xis)
-div_ratios_alt = blp.div_ratio_numdenom(ds, thetahat, ds.data, xis=xis)
-diff_div_ratios = np.abs(np.mean(div_ratios[1:]) + np.mean(div_ratios_alt[0][1:]) / np.mean(div_ratios_alt[1][1:]))
-if save_:
-    create_file(f"{paths.stats_path}diff_div_ratios_averaging.tex", f"{diff_div_ratios:.5f}")
     
 # %%
 # What discount rate would rationalize the bids based on our number for firm WTP for spectrum?
@@ -2010,141 +1222,6 @@ discount_rate_yearly = 1.0 / discount_factor_yearly - 1.0
 if save_:
     create_file(f"{paths.stats_path}auction_firm_wtp_allbw.tex", f"{firm_wtp_monthly:.5f}")
     create_file(f"{paths.stats_path}auction_implied_discount_rate_allbw.tex", f"{discount_rate_yearly * 100.0:.2f}")
-    
-# %%
-# Asymmetric equilibrium graph
-
-fig, axs = plt.subplots(2, 3, figsize=(12.0,6.5), squeeze=False)
-
-x_pos = np.arange(2)
-x_ticklabels = ["symmetric", "aymmetric"]
-patterns = ["", "/"]
-labels = ["$\\frac{1}{3}$bw", "$\\frac{1}{6}$bw"]
-alpha_pattern = [1.0, 0.6]
-width = 0.4 # the width of the bars
-
-# dlim = 1,000 prices
-multiplier = 0.0
-for i in range(2):
-    offset = width * multiplier
-    idx_use = np.ones(x_pos.shape, dtype=bool)
-    patterns_use = patterns[i]
-    if i == 0:
-        offset = np.array([offset + 0.5 * width * (multiplier + 1.0), offset])
-        patterns_use = np.copy(patterns)
-        patterns_use[0] = patterns_use[1]
-    else:
-        idx_use[0] = False # don't plot the first one
-    bars = axs[0,0].bar((x_pos + offset)[idx_use], p_stars_asymmetric_allbw(default_task_id)[:2,:,:][idx_use,i,0], width, yerr=1.96 * p_stars_asymmetric_allbw_se(default_task_id)[:2,:,:][idx_use,i,0], capsize=7.0, color="black", alpha=0.8 * alpha * alpha_pattern[i], hatch=patterns[i], edgecolor="black", label=labels[i])
-    multiplier += 1.0
-    for j, bar in enumerate(bars):  # loop over bars and hatches to set hatches in correct order
-        if (i == 0) and (j == 0):
-            bar.set_hatch(patterns[1])
-axs[0,0].set_xticks(x_pos + 0.5 * width)
-axs[0,0].set_xticklabels(x_ticklabels, rotation=60, ha="right", fontsize=x_fontsize, rotation_mode="anchor")
-# axs[0,0].legend(loc="upper center", ncol=2)
-axs[0,0].set_ylabel("$p_{j}^{*}$ (in \u20ac)", fontsize=y_fontsize)
-axs[0,0].set_title("1$\,$000 MB plan prices", fontsize=title_fontsize)
-
-# dlim = 10,000 prices
-multiplier = 0.0
-for i in range(2):
-    offset = width * multiplier
-    idx_use = np.ones(x_pos.shape, dtype=bool)
-    patterns_use = patterns[i]
-    if i == 0:
-        offset = np.array([offset + 0.5 * width * (multiplier + 1.0), offset])
-        patterns_use = np.copy(patterns)
-        patterns_use[0] = patterns_use[1]
-    else:
-        idx_use[0] = False # don't plot the first one
-    bars = axs[0,1].bar((x_pos + offset)[idx_use], p_stars_asymmetric_allbw(default_task_id)[:2,:,:][idx_use,i,1], width, yerr=1.96 * p_stars_asymmetric_allbw_se(default_task_id)[:2,:,:][idx_use,i,1], capsize=7.0, color="black", alpha=0.8 * alpha * alpha_pattern[i], hatch=patterns[i], edgecolor="black", label=labels[i])
-    multiplier += 1.0
-    for j, bar in enumerate(bars):  # loop over bars and hatches to set hatches in correct order
-        if (i == 0) and (j == 0):
-            bar.set_hatch(patterns[1])
-axs[0,1].set_xticks(x_pos + 0.5 * width)
-axs[0,1].set_xticklabels(x_ticklabels, rotation=60, ha="right", fontsize=x_fontsize, rotation_mode="anchor")
-# axs[0,1].legend(loc="upper center", ncol=2)
-axs[0,1].set_ylabel("$p_{j}^{*}$ (in \u20ac)", fontsize=y_fontsize)
-axs[0,1].set_title("10$\,$000 MB plan prices", fontsize=title_fontsize)
-
-# download speeds
-multiplier = 0.0
-for i in range(2):
-    offset = width * multiplier
-    idx_use = np.ones(x_pos.shape, dtype=bool)
-    patterns_use = patterns[i]
-    if i == 0:
-        offset = np.array([offset + 0.5 * width * (multiplier + 1.0), offset])
-        patterns_use = np.copy(patterns)
-        patterns_use[0] = patterns_use[1]
-    else:
-        idx_use[0] = False # don't plot the first one
-    bars = axs[0,2].bar((x_pos + offset)[idx_use], q_stars_asymmetric_allbw(default_task_id)[:2,:][idx_use,i], width, yerr=1.96 * q_stars_asymmetric_allbw_se(default_task_id)[:2,:][idx_use,i], capsize=7.0, color="black", alpha=0.8 * alpha * alpha_pattern[i], hatch=patterns[i], edgecolor="black", label=labels[i])
-    multiplier += 1.0
-    for j, bar in enumerate(bars):  # loop over bars and hatches to set hatches in correct order
-        if (i == 0) and (j == 0):
-            bar.set_hatch(patterns[1])
-axs[0,2].set_xticks(x_pos + 0.5 * width)
-axs[0,2].set_xticklabels(x_ticklabels, rotation=60, ha="right", fontsize=x_fontsize, rotation_mode="anchor")
-# axs[0,2].legend(loc="upper center", ncol=2)
-axs[0,2].set_ylabel("$Q_{f}^{*}$ (in Mbps)", fontsize=y_fontsize)
-axs[0,2].set_title("download speeds", fontsize=title_fontsize)
-
-# consumer surplus
-axs[1,0].bar(x_pos, cs_asymmetric_allbw(default_task_id)[:2], color="black", alpha=0.8 * alpha)
-# axs[1,0].bar(x_pos, cs_asymmetric_allbw(default_task_id), yerr=1.96 * cs_asymmetric_allbw_se(default_task_id), capsize=7.0, color="black", alpha=0.8 * alpha)
-axs[1,0].set_xticks(x_pos)
-axs[1,0].set_xticklabels(x_ticklabels, rotation=60, ha="right", fontsize=x_fontsize)
-axs[1,0].set_ylabel("\u20ac / person", fontsize=y_fontsize)
-axs[1,0].set_title("consumer surplus", fontsize=title_fontsize)
-
-# producer surplus
-axs[1,1].bar(x_pos, ps_asymmetric_allbw(default_task_id)[:2], color="black", alpha=0.8 * alpha)
-# axs[1,1].bar(x_pos, ps_asymmetric_allbw(default_task_id), yerr=1.96 * ps_asymmetric_allbw_se(default_task_id), capsize=7.0, color="black", alpha=0.8 * alpha)
-axs[1,1].set_xticks(x_pos)
-axs[1,1].set_xticklabels(x_ticklabels, rotation=60, ha="right", fontsize=x_fontsize)
-axs[1,1].set_ylabel("\u20ac / person", fontsize=y_fontsize)
-axs[1,1].set_title("producer surplus", fontsize=title_fontsize)
-
-# total surplus
-axs[1,2].bar(x_pos, ts_asymmetric_allbw(default_task_id)[:2], color="black", alpha=0.8 * alpha)
-# axs[1,2].bar(x_pos, ts_asymmetric_allbw(default_task_id), yerr=1.96 * ts_asymmetric_allbw_se(default_task_id), capsize=7.0, color="black", alpha=0.8 * alpha)
-axs[1,2].set_xticks(x_pos)
-axs[1,2].set_xticklabels(x_ticklabels, rotation=60, ha="right", fontsize=x_fontsize)
-axs[1,2].set_ylabel("\u20ac / person", fontsize=y_fontsize)
-axs[1,2].set_title("total surplus", fontsize=title_fontsize)
-
-# Set axis limits endogenous variables
-for i in range(3): # first two columns
-    axs[0,i].set_xlim((-0.25, 1.75))
-    if i > 1:
-        continue
-    min_y_p = np.min(p_stars_asymmetric_allbw(default_task_id)[:2,:,:][:,:,i] - 1.96 * p_stars_asymmetric_allbw_se(default_task_id)[:2,:,:][:,:,i])
-    max_y_p = np.max(p_stars_asymmetric_allbw(default_task_id)[:2,:,:][:,:,i] + 1.96 * p_stars_asymmetric_allbw_se(default_task_id)[:2,:,:][:,:,i])
-    diff = max_y_p - min_y_p
-    axs[0,i].set_ylim((min_y_p - 0.25 * diff, max_y_p + 0.25 * diff))
-    
-# Set axis limits endogenous variables
-max_diff = 0.0
-welfare_vars = [cs_asymmetric_allbw(default_task_id), ps_asymmetric_allbw(default_task_id), ts_asymmetric_allbw(default_task_id)]
-for i, welfare_var in enumerate(welfare_vars): 
-    diff = np.max(welfare_var) - np.min(welfare_var)
-    if diff > max_diff:
-        max_diff = diff
-for i, welfare_var in enumerate(welfare_vars): 
-    min_y = np.min(welfare_var)
-    max_y = np.max(welfare_var)
-    axs[1,i].set_ylim((min_y - 0.25 * max_diff, max_y + 0.25 * max_diff))
-
-plt.tight_layout()
-
-if save_:
-    plt.savefig(f"{paths.graphs_path}counterfactual_asymmetric.pdf", bbox_inches = "tight", transparent=True)
-
-if print_:
-    plt.show()
     
 # %%
 # Asymmetric equilibrium table
@@ -2247,9 +1324,9 @@ fig, axs = plt.subplots(1, 3, figsize=(9.0,4.0), squeeze=False)
 
 minmin = np.nanmin([np.nanmin(cs_shortrun)])
 maxmax = np.nanmax([np.nanmax(cs_shortrun)])
-im_bw = axs[0,0].imshow(bw_mergers, vmin=np.nanmin(bw_mergers), vmax=np.nanmax(bw_mergers), cmap="Greys_r")
-im_radius = axs[0,1].imshow(radius_shortrun, vmin=np.nanmin(radius_shortrun), vmax=np.nanmax(radius_shortrun), cmap="Greys_r")
-im_shortrun = axs[0,2].imshow(cs_shortrun, vmin=np.nanmin(cs_shortrun), vmax=np.nanmax(cs_shortrun), cmap="Greys_r")
+im_bw = axs[0,0].imshow(bw_mergers, vmin=np.nanmin(bw_mergers), vmax=np.nanmax(bw_mergers), cmap="YlGn_r")
+im_radius = axs[0,1].imshow(radius_shortrun, vmin=np.nanmin(radius_shortrun), vmax=np.nanmax(radius_shortrun), cmap="PuBu")
+im_shortrun = axs[0,2].imshow(cs_shortrun, vmin=np.nanmin(cs_shortrun), vmax=np.nanmax(cs_shortrun), cmap="Reds_r")
 
 mno_names = np.array(mnos[:-1])
 for i, mno in enumerate(mno_names):
@@ -2278,17 +1355,16 @@ for ax_idx, var in enumerate([bw_mergers, radius_shortrun, cs_shortrun]):#enumer
                 axs[0,ax_idx].plot([j-0.5, j+0.5], [i-0.5, i+0.5], color="black")
                 axs[0,ax_idx].plot([j-0.5, j+0.5], [i+0.5, i-0.5], color="black")
             else:
-                text_display = f"{var[i,j]:.1f}"
+                text_display = f"${var[i,j]:.2f}$"
                 if ax_idx == 0: # bandwidth
-                    text_display = f"{var[i,j]:.0f}"
-                text = axs[0,ax_idx].text(j, i, text_display, ha="center", va="center", color="black" if (var[i,j] > 0.67 * np.nanmin(var) + 0.33 * np.nanmax(var)) else "white")
-
-# cbar_ax_radius = fig.add_axes([axs[0,0].get_position().x0, axs[0,0].get_position().y0 - 0.15, axs[0,0].get_position().width, 0.03])
-# cbar_radius = fig.colorbar(im_radius, cax=cbar_ax_radius, orientation="horizontal")
-# cbar_radius.set_label("km", labelpad=2, fontsize=y_fontsize)
-# cbar_ax_shortrun = fig.add_axes([axs[0,1].get_position().x0, axs[0,1].get_position().y0 - 0.15, axs[0,1].get_position().width, 0.03])
-# cbar_shortrun = fig.colorbar(im_shortrun, cax=cbar_ax_shortrun, orientation="horizontal")
-# cbar_shortrun.set_label("\u20ac / person", labelpad=2, fontsize=y_fontsize)
+                    text_display = f"${var[i,j]:.0f}$"
+                if ax_idx == 2: # CS
+                    text_display = f"${var[i,j]:.2f}$"
+                if (ax_idx == 0) or (ax_idx == 2):
+                    color_use = "black" if (var[i,j] > 0.67 * np.nanmin(var) + 0.33 * np.nanmax(var)) else "white"
+                else:
+                    color_use = "white" if (var[i,j] > 0.5 * np.nanmin(var) + 0.5 * np.nanmax(var)) else "black"
+                text = axs[0,ax_idx].text(j, i, text_display, ha="center", va="center", color=color_use)
 
 pad = 0.06
 colorbar_height = 0.02
@@ -2315,6 +1391,7 @@ plt.tight_layout(rect=[0, 0.1, 1, 1])
 
 if save_:
     plt.savefig(f"{paths.graphs_path}counterfactual_shortrunmerger.pdf", bbox_inches = "tight", transparent=True)
+    plt.savefig(f"{paths.graphs_path}figure12.pdf", bbox_inches = "tight", transparent=True)
 
 if print_:
     plt.show()
@@ -2378,8 +1455,10 @@ for i, mvno_description in enumerate(["original", "expanded MVNOs"]):
     demand_parameters += " \\\\ \n"
 demand_parameters += "\\hline \n"
 demand_parameters += "\\end{tabular} \n"
-create_file(f"{paths.tables_path}demand_parameters_diff_specs.tex", demand_parameters)
-print(demand_parameters)
+if save_:
+    create_file(f"{paths.tables_path}demand_parameters_diff_specs.tex", demand_parameters)
+if print_:
+    print(demand_parameters)
 
 counterfactual_results = "\\begin{tabular}{l c c c c c c c c c c c c} \\hline \n"
 #counterfactual_results += "Specification & & 1 GB $P^{*}_{n=4}$ & & 10 GB $P^{*}_{n=4}$ & & $Q^{*}_{n=4}$ & & $\\begin{array}{c}\nCS_{n=4} - \\\\ CS_{n=3}\n\\end{array}$ & & $\\begin{array}{c}\n\\arg\\max_{n} \\\\ \\{CS_{n}\\}\n\\end{array}$ & & $\\begin{array}{c}\n\\arg\\max_{n} \\\\ \\{TS_{n}\\}\n\\end{array}$ \\\\ \n"
@@ -2396,9 +1475,11 @@ for i, mvno_description in enumerate(["original", "host MNO"]):
     counterfactual_results += " \\\\ \n"
 counterfactual_results += "\\hline \n"
 counterfactual_results += "\\end{tabular} \n"
-create_file(f"{paths.tables_path}counterfactual_results_diff_specs.tex", counterfactual_results)
-print(counterfactual_results)
-
+if save_:
+    create_file(f"{paths.tables_path}counterfactual_results_diff_specs.tex", counterfactual_results)
+if print_:
+    print(counterfactual_results)
+    
 # %%
 # Check for evidence of multiplicity
 

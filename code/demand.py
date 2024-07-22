@@ -7,7 +7,6 @@
 #----------------------------------------------------------------
 
 import autograd.numpy as np
-#import numpy as np
 import pandas as pd
 
 import matplotlib.pyplot as plt
@@ -17,12 +16,13 @@ import sys
 import paths
 
 import demand.demandsystem as demsys
-import demand.estimation as est
-import demand.moments as moments
-import demand.variancematrix as vm
 import demand.dataexpressions as de
-import demand.blpextension as blp
+import demand.demandfunctions as blp
 import demand.coefficients as coef
+
+import estimation as est
+import moments as moments
+import variancematrix as vm
 
 import pickle
 
@@ -34,7 +34,8 @@ task_id = int(sys.argv[1])
 reallocate_MVNO = task_id == 1
         
 df = pd.read_csv(f"{paths.data_path}demand_estimation_data.csv")
-if not paths.include_ROF_in_moments: # if we aren't including "Rest of France" in the moments
+include_ROF_in_moments = False # whether to include "Rest of France" in the moments
+if not include_ROF_in_moments:
     df['pdens_clean'] = np.nan_to_num(df['pdens_clean'].values, nan=0.001) # replace population density with a random non-zero number, doesn't end up enterring moments, so doesn't matter, but if they are 0 or NaN causes an issue with autograd gradient, resulting in all-NaN gradients
 df_agg = pd.read_csv(f"{paths.data_path}agg_data.csv")
 
@@ -84,7 +85,6 @@ if reallocate_MVNO:
 # Set up demand system
 chars = {'names': ['p', 'q_ookla', 'dlim', 'vunlimited','Orange'], 'norm': np.array([False, False, False, False, False])}
 ds = demsys.DemandSystem(df, 
-                         ['market', 'month', 'j_new'], 
                          chars, 
                          ['spectreff3G2100', 'spectreff3G900', 'spectreff4G2600', 'spectreff4G800'], 
                          ['yc1', 'yc2', 'yc3', 'yc4', 'yc5', 'yc6', 'yc7', 'yc8', 'yc9'], 
@@ -98,17 +98,20 @@ ds = demsys.DemandSystem(df,
                          dbarname='dbar_new', 
                          marketsharename='mktshare_new_adjust', 
                          productname='j_new', 
-                         include_ROF=paths.include_ROF_in_moments)
+                         include_ROF=include_ROF_in_moments)
 
 
 #----------------------------------------------------------------
 #   Price Elasticity Imputation
 #----------------------------------------------------------------
 
-elast_id = 0
-nest_id = 0
-avg_price_el = paths.avg_price_elasts[elast_id]
-div_ratio = paths.div_ratios[nest_id]
+avg_price_elasts = np.array([-2.36])
+div_ratios = np.array([0.0356])
+if task_id == 0:
+    np.save(f"{paths.arrays_path}avg_price_elasts.npy", avg_price_elasts)
+    np.save(f"{paths.arrays_path}div_ratios.npy", div_ratios)
+avg_price_el = avg_price_elasts[0]
+div_ratio = div_ratios[0]
 
 print('Average price elasticity: ' + str(avg_price_el), flush=True)
 print('Div ratio: ' + str(div_ratio), flush=True)
@@ -123,14 +126,14 @@ with open(f"{paths.data_path}demandsystem_{task_id}.obj", "wb") as file_ds:
 
 K = moments.K
 
-thetainit_p0 = paths.thetainit_p0[elast_id,nest_id]
-thetainit_pz = paths.thetainit_pz[elast_id,nest_id]
-thetainit_v = paths.thetainit_v[elast_id,nest_id]
-thetainit_O = paths.thetainit_O[elast_id,nest_id]
-thetainit_d0 = paths.thetainit_d0[elast_id,nest_id]
-thetainit_dz = paths.thetainit_dz[elast_id,nest_id]
-thetainit_c = paths.thetainit_c[elast_id,nest_id]
-thetainit_sigma = paths.thetainit_sigma[elast_id,nest_id]
+thetainit_p0 = -1.55
+thetainit_pz = -1.1
+thetainit_v = 0.25
+thetainit_O = 3.0
+thetainit_d0 = 0.8
+thetainit_dz = 0.32
+thetainit_c = -8.75
+thetainit_sigma = np.log(0.8 / (1.0 - 0.8))
 thetainit = np.array([thetainit_p0, thetainit_pz, thetainit_v, thetainit_O, thetainit_d0, thetainit_dz, thetainit_c, thetainit_sigma])
 Winit = np.identity(K)
 
@@ -160,18 +163,6 @@ np.save(paths.arrays_path + f"What_{task_id}.npy", What)
 np.save(paths.arrays_path + f"Gn_{task_id}.npy", G_n)
 np.save(paths.arrays_path + f"stderrs_{task_id}.npy", stderrs_num)
 
-df_est = pd.DataFrame(thetahat, index=['p0','pz','v','O','d0','dz','c','sigma'], columns=['estimate'])
-df_est['std_errs'] = stderrs_num
-df_est.to_csv(paths.res_path + f"res_{task_id}.csv",index=True)
-
-numdraws = 50
-chol_decomp = np.linalg.cholesky(varmatrix_num / float(N))
-nu_s = np.random.normal(size=(thetahat.shape[0],numdraws))
-Nu_s = np.hstack((nu_s, -nu_s))
-theta_s = thetahat[:,np.newaxis] + np.matmul(chol_decomp, Nu_s)
-df_draws = pd.DataFrame(np.transpose(theta_s), columns=['p0','pz','v','O','d0','dz','c','sigma'])
-df_draws.to_csv(paths.asym_draws_path + f"asym_{task_id}.csv", index=False)
-
 theta = np.copy(thetahat)
 X = ds.data
 xis = blp.xi(ds, theta, X, None)
@@ -188,8 +179,8 @@ predicted_dbar = np.sum(Ex * weights, axis=2) / np.sum(weights, axis=2) # weight
 # difference between predicted and recorded
 dbaridx = ds.dim3.index(ds.dbarname)
 actual_dbar = X[:,ds.Oproducts,dbaridx]
-np.save(paths.dbar_path + f"predicted_{task_id}.npy", predicted_dbar)
-np.save(paths.dbar_path + f"actual_{task_id}.npy", actual_dbar)
+np.save(paths.arrays_path + f"predicted_dbar_{task_id}.npy", predicted_dbar)
+np.save(paths.arrays_path + f"actual_dbar_{task_id}.npy", actual_dbar)
 fig, axs = plt.subplots(1, 3, figsize=(10, 4), sharex=True, sharey=True)
 title = ['$\\bar{x} = 1000$', '$\\bar{x} = 4000$', '$\\bar{x} = 8000$']
 for j in range(3):

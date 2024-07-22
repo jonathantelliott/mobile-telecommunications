@@ -1,11 +1,14 @@
+# %%
+# Import packages
 import autograd.numpy as np
-#import autograd.scipy.special as special
 #import numpy as np
-#import scipy.special as special
 from scipy.special import expi
 from autograd.extend import primitive, defvjp
 
 import demand.coefficients as coef
+
+# %%
+# Units for data, throttling limits, useful functions
 
 conv_factor = 1000. # =1. if MB, =1000. if GB
 
@@ -21,13 +24,40 @@ def correct_units(xbar, Q, QL):
     return xbar, Q, QL
 
 @primitive
-def Ei(x):
+def Ei(x): # exponential integral
     return expi(x)
 
 # derivative of Ei(.)
-defvjp(Ei, lambda ans, x: lambda g: g * np.exp(x) / x)
+defvjp(Ei, lambda ans, x: lambda g: g * np.exp(x) / x) # have to define because not in autograd
+
+# %%
+# Data consumption functions
 
 def E_x(ds, theta, X, Q, xbar, yc):
+    """
+        Return expected data consumption
+    
+    Parameters
+    ----------
+        ds : DemandSystem
+            contains all the data about markets
+        theta : ndarray
+            (K,) array of demand parameters
+        X : ndarray
+            (M,J) array of market-product characteristics
+        Q : ndarray
+            (M,J) array of download speeds
+        xbar : ndarray
+            (M,J) array of data limits
+        yc : ndarray
+            (M,J,I) array of incomes for each market, consumer type
+
+    Returns
+    -------
+        expected_consumption : ndarray
+            (M,J,I) array of expected data consumption for each market, product, consumer type
+    """
+    
     d = coef.theta_di(ds, theta, yc)
     Q = Q[:,:,np.newaxis] # add i index
     QL = Q_L(Q)
@@ -55,9 +85,34 @@ def E_x(ds, theta, X, Q, xbar, yc):
     
     wo_throttle = int_1 + int_2_wo_throttle
     
-    return (np.tile(xbar,(1,1,w_throttle.shape[2])) < throttle_lim) * wo_throttle + (np.tile(xbar,(1,1,w_throttle.shape[2])) >= throttle_lim) * w_throttle
+    expected_consumption = (np.tile(xbar,(1,1,w_throttle.shape[2])) < throttle_lim) * wo_throttle + (np.tile(xbar,(1,1,w_throttle.shape[2])) >= throttle_lim) * w_throttle
+    return expected_consumption
 
 def E_u(ds, theta, X, Q, xbar, yc):
+    """
+        Return expected utility from data consumption
+    
+    Parameters
+    ----------
+        ds : DemandSystem
+            contains all the data about markets
+        theta : ndarray
+            (K,) array of demand parameters
+        X : ndarray
+            (M,J) array of market-product characteristics
+        Q : ndarray
+            (M,J) array of download speeds
+        xbar : ndarray
+            (M,J) array of data limits
+        yc : ndarray
+            (M,J,I) array of incomes for each market, consumer type
+
+    Returns
+    -------
+        expected_utility : ndarray
+            (M,J,I) array of expected utility from data consumption for each market, product, consumer type
+    """
+    
     d = coef.theta_di(ds, theta, yc)
     Q = Q[:,:,np.newaxis] # add i index
     QL = Q_L(Q)
@@ -89,4 +144,5 @@ def E_u(ds, theta, X, Q, xbar, yc):
     
     wo_throttle = int_1 + int_2_wo_throttle
     
-    return (np.tile(xbar,(1,1,w_throttle.shape[2])) < throttle_lim) * wo_throttle + (np.tile(xbar,(1,1,w_throttle.shape[2])) >= throttle_lim) * w_throttle
+    expected_utility = (np.tile(xbar,(1,1,w_throttle.shape[2])) < throttle_lim) * wo_throttle + (np.tile(xbar,(1,1,w_throttle.shape[2])) >= throttle_lim) * w_throttle
+    return expected_utility

@@ -1,8 +1,9 @@
 import autograd.numpy as np
 #import numpy as np
 
-import demand.blpextension as blp
-import demand.gmm as gmm
+import demand.demandfunctions as blp
+
+import gmm as gmm
 
 def W(ds, thetahat, K, avg_price_el, div_ratio, firm_num_MVNO=5):
     N = ds.num_markets_moms
