@@ -1,9 +1,6 @@
 # Ignore Mac system files
 .DS_Store
 
-# Ignore all Jupyter notebooks
-*.ipynb
-
 # Ignore folders
 quality/notebooks/
 demand/estimation/slurm/
